@@ -1,23 +1,29 @@
-.PHONY: start, clean, check_env
+.PHONY: start clean check_env
 
 include assets/env/.env
 
 NUM_CORES := $(shell python -c "import os; print(os.cpu_count())")
-NUM_WORKERS := $(shell echo $$((2 * $(NUM_CORES) + 1)))
+NUM_WORKERS := $(shell echo $$((($(NUM_CORES) / 2) + 1)))
 
 ENV_FILE_PATH := assets/env/.env
 
 start: check_env
-	@gunicorn src.main:entry -b ${SERVER_ADDR} -w $(NUM_WORKERS) -k uvicorn.workers.UvicornWorker --access-logfile -
+	@echo "Starting the application with ${NUM_WORKERS} workers..."
+	@gunicorn "src.main:entry()"\
+	 -w $(NUM_WORKERS)\
+	 -b ${SERVER_ADDR}\
+	 -k src.config.server_config.HeadlessUvicornWorker\
+	 --access-logfile -
 
 clean:
+	@echo "Cleaning up Python cache..."
 	@find . \( -name '__pycache__' -o -name '*.pyc' -o -name '*.pyo' \) -delete
 
 check_env:
-	@echo "Checking .env file..."
+	@echo "Checking for .env file..."
 	@if [ ! -f assets/env/.env ]; then \
-		echo ".env file not found!"; \
+		echo ".env file not found! Please create it."; \
 		exit 1; \
 	else \
-		echo ".env file found..."; \
+		echo ".env file found."; \
 	fi

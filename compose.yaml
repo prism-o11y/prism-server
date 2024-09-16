@@ -1,0 +1,28 @@
+services:
+  user-service:
+    build: 
+      context: ./user-service
+      dockerfile: Dockerfile
+    environment:
+      - SERVER_ADDR=$SERVER_ADDR
+      - SERVER_VERSION=$SERVER_VERSION
+      - SERVER_NAME=$SERVER_NAME
+      - SERVER_ALLOWED_ORIGINS=$SERVER_ALLOWED_ORIGINS
+      - SERVER_ALLOWED_HEADERS=$SERVER_ALLOWED_HEADERS
+      - DATABASE_POSTGRES=$DATABASE_POSTGRES
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+
+volumes:
+  postgres_data:

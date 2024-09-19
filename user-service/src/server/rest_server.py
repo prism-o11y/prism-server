@@ -18,24 +18,23 @@ class RestServer:
             version=config.SERVER.VERSION,
             lifespan=self.lifespan_context,
         )
-        self._config = config
-        self._database_manager = PostgresManager(config)
+        self._app.state.postgres_manager = PostgresManager(config)
         self._setup_middlewares()
         self._setup_routes()
 
-    def _setup_middlewares(self) -> None:
+    def _setup_middlewares(self, config: BaseConfig) -> None:
         self._app.add_middleware(
             CORSMiddleware,
-            allow_origins=self._config.SERVER.ALLOWED_ORIGINS,
+            allow_origins=config.SERVER.ALLOWED_ORIGINS,
             allow_credentials=True,
             allow_methods=["*"],
-            allow_headers=self._config.SERVER.ALLOWED_HEADERS,
+            allow_headers=config.SERVER.ALLOWED_HEADERS,
         )
 
         @self._app.middleware("http")
-        async def _(request: Request, call_next):
+        async def remove_server_header(request: Request, call_next):
             response = await call_next(request)
-            del response.headers["server"]
+            response.headers.pop("server", None)
             return response
 
     def _setup_routes(self) -> None:
@@ -44,9 +43,10 @@ class RestServer:
 
     @asynccontextmanager
     async def lifespan_context(self, app: FastAPI):
-        await self._database_manager.connect()
+        postgres_manager: PostgresManager = app.state.postgres_manager
+        await postgres_manager.connect()
         yield
-        await self._database_manager.disconnect()
+        await postgres_manager.disconnect()
 
     def get_app(self) -> FastAPI:
         return self._app

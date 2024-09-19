@@ -19,6 +19,7 @@ class RestServer:
         self._app.state.postgres_manager = PostgresManager(config)
         self._setup_middlewares(config)
         self._setup_routes()
+        logging.info("REST server initialized.")
 
     def _setup_middlewares(self) -> None:
         self._app.add_middleware(

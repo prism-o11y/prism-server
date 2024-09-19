@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 
+from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
 
 
@@ -26,7 +27,8 @@ class RestServer:
             return response
 
     def _setup_routes(self, config: BaseConfig) -> None:
-        pass
+        v1_router = new_v1_router()
+        self._app.include_router(v1_router)
 
     def get_app(self) -> FastAPI:
         return self._app

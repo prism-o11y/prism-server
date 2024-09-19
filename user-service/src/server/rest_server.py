@@ -1,16 +1,10 @@
-from fastapi import FastAPI, Request
 from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
 from starlette.middleware.cors import CORSMiddleware
 import logging
 from typing import AsyncGenerator, Awaitable, Callable
-
 from fastapi import FastAPI, Request, Response
 from fastapi.concurrency import asynccontextmanager
-from starlette.middleware.cors import CORSMiddleware
-
-from src.api.v1.entry import new_v1_router
-from src.config.base_config import BaseConfig
 from src.database.postgres import PostgresManager
 
 
@@ -27,13 +21,13 @@ class RestServer:
         self._setup_routes()
         logging.info("REST server initialized.")
 
-    def _setup_middlewares(self, config: BaseConfig) -> None:
+    def _setup_middlewares(self) -> None:
         self._app.add_middleware(
             CORSMiddleware,
-            allow_origins=config.SERVER.ALLOWED_ORIGINS,
+            allow_origins=self._config.SERVER.ALLOWED_ORIGINS,
             allow_credentials=True,
             allow_methods=["*"],
-            allow_headers=config.SERVER.ALLOWED_HEADERS,
+            allow_headers=self._config.SERVER.ALLOWED_HEADERS,
         )
 
         @self._app.middleware("http")

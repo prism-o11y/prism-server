@@ -13,7 +13,6 @@ class BaseConfig(BaseSettings):
     SERVER: ServerConfig = ServerConfig()
     AUTH0: Auth0Config = Auth0Config()
     DATABASE: DatabaseConfig = DatabaseConfig()
-    AUTH0: Auth0Config = Auth0Config()
 
 
 @lru_cache()

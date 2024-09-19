@@ -1,4 +1,6 @@
-from fastapi import FastAPI, Request
+from typing import AsyncGenerator, Awaitable, Callable
+
+from fastapi import FastAPI, Request, Response
 from fastapi.concurrency import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
 
@@ -16,7 +18,7 @@ class RestServer:
             lifespan=self.lifespan_context,
         )
         self._app.state.postgres_manager = PostgresManager(config)
-        self._setup_middlewares()
+        self._setup_middlewares(config)
         self._setup_routes()
 
     def _setup_middlewares(self, config: BaseConfig) -> None:
@@ -29,7 +31,9 @@ class RestServer:
         )
 
         @self._app.middleware("http")
-        async def remove_server_header(request: Request, call_next):
+        async def remove_server_header(
+            request: Request, call_next: Callable[[Request], Awaitable[Response]]
+        ) -> Response:
             response = await call_next(request)
             response.headers.pop("server", None)
             return response
@@ -39,7 +43,7 @@ class RestServer:
         self._app.include_router(v1_router)
 
     @asynccontextmanager
-    async def lifespan_context(self, app: FastAPI):
+    async def lifespan_context(self, app: FastAPI) -> AsyncGenerator[None, None]:
         postgres_manager: PostgresManager = app.state.postgres_manager
         await postgres_manager.connect()
         yield

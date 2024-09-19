@@ -16,9 +16,8 @@ class RestServer:
             version=config.SERVER.VERSION,
             lifespan=self.lifespan_context,
         )
-        self._config = config
-        self._database_manager = PostgresManager(config)
-        self._setup_middlewares()
+        self._app.state.postgres_manager = PostgresManager(config)
+        self._setup_middlewares(config)
         self._setup_routes()
 
     def _setup_middlewares(self) -> None:
@@ -44,8 +43,9 @@ class RestServer:
         self._app.include_router(v1_router)
 
     @asynccontextmanager
-    async def lifespan_context(self, app: FastAPI):
-        await self._database_manager.connect()
+    async def lifespan_context(self, app: FastAPI) -> AsyncGenerator[None, None]:
+        postgres_manager: PostgresManager = app.state.postgres_manager
+        await postgres_manager.connect()
         yield
         await self._database_manager.disconnect()
 

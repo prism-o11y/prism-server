@@ -12,8 +12,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 def entry() -> FastAPI:
     try:
         config = get_base_config()
+        logging.info("Configuration loaded.")
     except ValidationError as e:
-        print("Configuration Error:", e)
+        logging.critical(f"Invalid configuration: {e}", exc_info=True)
+        exit(1)
 
     rest_server = RestServer(config)
     return rest_server.get_app()

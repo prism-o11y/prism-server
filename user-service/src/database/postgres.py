@@ -1,3 +1,4 @@
+import logging
 from typing import AsyncGenerator
 
 from asyncpg import Connection, Pool, create_pool
@@ -12,19 +13,28 @@ class PostgresManager:
         self.pool: Pool = None
 
     async def connect(self) -> None:
-        self.pool = await create_pool(dsn=self.config.POSTGRES_URL)
+        try:
+            self.pool = await create_pool(dsn=self.config.POSTGRES_URL)
+        except Exception as e:
+            logging.critical(f"Failed to connect to Postgres: {e}", exc_info=True)
+            exit(1)
 
     async def disconnect(self) -> None:
         if self.pool:
-            await self.pool.close()
+            try:
+                await self.pool.close()
+            except Exception as e:
+                logging.error(f"Failed to close Postgres connection: {e}", exc_info=True)
 
     @asynccontextmanager
     async def get_connection(self) -> AsyncGenerator[Connection, None]:
         connection = await self.pool.acquire()
         try:
+            logging.debug("PostgreSQL connection acquired.")
             yield connection
         finally:
             await self.pool.release(connection)
+            logging.debug("PostgreSQL connection released.")
 
 
 async def get_postgres_manager(request: Request) -> PostgresManager:

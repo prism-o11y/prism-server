@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
 from starlette.middleware.cors import CORSMiddleware
+import logging
 from typing import AsyncGenerator, Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
@@ -24,6 +25,7 @@ class RestServer:
         self._app.state.postgres_manager = PostgresManager(config)
         self._setup_middlewares(config)
         self._setup_routes()
+        logging.info("REST server initialized.")
 
     def _setup_middlewares(self, config: BaseConfig) -> None:
         self._app.add_middleware(
@@ -40,6 +42,7 @@ class RestServer:
         ) -> Response:
             response = await call_next(request)
             response.headers.pop("server", None)
+            logging.debug("Removed server header.")
             return response
 
     def _setup_routes(self) -> None:

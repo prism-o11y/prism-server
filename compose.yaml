@@ -3,13 +3,8 @@ services:
     build: 
       context: ./user-service
       dockerfile: Dockerfile
-    environment:
-      - SERVER_ADDR=$SERVER_ADDR
-      - SERVER_VERSION=$SERVER_VERSION
-      - SERVER_NAME=$SERVER_NAME
-      - SERVER_ALLOWED_ORIGINS=$SERVER_ALLOWED_ORIGINS
-      - SERVER_ALLOWED_HEADERS=$SERVER_ALLOWED_HEADERS
-      - DATABASE_POSTGRES=$DATABASE_POSTGRES
+    env_file:
+      - assets/env/.env
     ports:
       - "8000:8000"
     depends_on:

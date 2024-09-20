@@ -4,7 +4,6 @@ from typing import AsyncGenerator, Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 from fastapi.concurrency import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
-
 from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
 from src.database.postgres import PostgresManager

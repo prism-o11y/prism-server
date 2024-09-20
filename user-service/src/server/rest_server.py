@@ -1,8 +1,7 @@
 from fastapi import FastAPI, Request
-from starlette.middleware.cors import CORSMiddleware
-
 from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
+from starlette.middleware.cors import CORSMiddleware
 
 
 class RestServer:

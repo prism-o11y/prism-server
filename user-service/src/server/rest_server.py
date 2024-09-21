@@ -1,12 +1,13 @@
-from fastapi import FastAPI, Request, Response
-from fastapi.concurrency import asynccontextmanager
-from src.api.v1.entry import new_v1_router
-from src.config.base_config import BaseConfig
-from starlette.middleware.cors import CORSMiddleware
 import logging
 from typing import AsyncGenerator, Awaitable, Callable
-from src.database.postgres import PostgresManager
 
+from fastapi import FastAPI, Request, Response
+from fastapi.concurrency import asynccontextmanager
+from starlette.middleware.cors import CORSMiddleware
+from src.api.v1.entry import new_v1_router
+from src.config.base_config import BaseConfig
+from src.database.postgres import PostgresManager
+from src.api.v1.entry import Auth0Manager
 
 class RestServer:
     def __init__(self, config: BaseConfig) -> None:
@@ -17,17 +18,18 @@ class RestServer:
             lifespan=self.lifespan_context,
         )
         self._app.state.postgres_manager = PostgresManager(config)
+        self._app.state.auth0_manager = Auth0Manager(config)
         self._setup_middlewares(config)
         self._setup_routes()
         logging.info("REST server initialized.")
 
-    def _setup_middlewares(self) -> None:
+    def _setup_middlewares(self, config: BaseConfig) -> None:
         self._app.add_middleware(
             CORSMiddleware,
-            allow_origins=self._config.SERVER.ALLOWED_ORIGINS,
+            allow_origins=config.SERVER.ALLOWED_ORIGINS,
             allow_credentials=True,
             allow_methods=["*"],
-            allow_headers=self._config.SERVER.ALLOWED_HEADERS,
+            allow_headers=config.SERVER.ALLOWED_HEADERS,
         )
 
         @self._app.middleware("http")
@@ -35,7 +37,8 @@ class RestServer:
             request: Request, call_next: Callable[[Request], Awaitable[Response]]
         ) -> Response:
             response = await call_next(request)
-            response.headers.pop("server", None)
+            if "server" in response.headers:
+                del response.headers["server"]
             logging.debug("Removed server header.")
             return response
 
@@ -48,7 +51,7 @@ class RestServer:
         postgres_manager: PostgresManager = app.state.postgres_manager
         await postgres_manager.connect()
         yield
-        await self._database_manager.disconnect()
+        await postgres_manager.disconnect()
 
     def get_app(self) -> FastAPI:
         return self._app

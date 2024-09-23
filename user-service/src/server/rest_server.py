@@ -7,6 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
 from src.database.postgres import PostgresManager
+from src.api.v1.entry import Auth0Manager
 
 
 class RestServer:
@@ -18,6 +19,7 @@ class RestServer:
             lifespan=self.lifespan_context,
         )
         self._app.state.postgres_manager = PostgresManager(config)
+        self._app.state.auth0_manager = Auth0Manager(config)
         self._setup_middlewares(config)
         self._setup_routes()
         logging.info("REST server initialized.")
@@ -36,8 +38,9 @@ class RestServer:
             request: Request, call_next: Callable[[Request], Awaitable[Response]]
         ) -> Response:
             response = await call_next(request)
-            response.headers.pop("server", None)
-            logging.debug("Removed server header.")
+            if "server" in response.headers:
+                del response.headers["server"]
+                logging.debug("Removed server header.")
             return response
 
     def _setup_routes(self) -> None:

@@ -10,3 +10,4 @@ class Auth0Config(BaseModel):
     AUTH0_API_AUDIENCE: str = os.getenv("AUTH0_API_AUDIENCE")
     AUTH0_URL: str = os.getenv("AUTH0_URL")
     AUTH0_ALGORITHMS: str = os.getenv("AUTH0_ALGORITHMS")
+    AUTH0_REDIRECT_URI: str = os.getenv("AUTH0_REDIRECT_URI")

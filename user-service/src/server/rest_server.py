@@ -9,6 +9,7 @@ from src.config.base_config import BaseConfig
 from src.database.postgres import PostgresManager
 from src.api.v1.entry import Auth0Manager
 
+
 class RestServer:
     def __init__(self, config: BaseConfig) -> None:
         self._app = FastAPI(
@@ -39,7 +40,7 @@ class RestServer:
             response = await call_next(request)
             if "server" in response.headers:
                 del response.headers["server"]
-            logging.debug("Removed server header.")
+                logging.debug("Removed server header.")
             return response
 
     def _setup_routes(self) -> None:

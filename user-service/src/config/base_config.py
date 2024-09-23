@@ -2,7 +2,6 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings
 from src.config.auth_config import Auth0Config
-
 from src.config.database_config import DatabaseConfig
 from src.config.server_config import ServerConfig
 

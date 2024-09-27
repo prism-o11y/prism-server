@@ -1,13 +1,13 @@
-import logging
+import logging, os
 from typing import AsyncGenerator, Awaitable, Callable
-
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi import FastAPI, Request, Response
 from fastapi.concurrency import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
 from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
 from src.database.postgres import PostgresManager
-from src.api.v1.entry import Auth0Manager
+from src.auth.auth0 import Auth0Manager
 
 
 class RestServer:
@@ -31,6 +31,10 @@ class RestServer:
             allow_credentials=True,
             allow_methods=["*"],
             allow_headers=config.SERVER.ALLOWED_HEADERS,
+        )
+        self._app.add_middleware(
+            SessionMiddleware,
+            secret_key=os.getenv("SECRET_KEY"),
         )
 
         @self._app.middleware("http")

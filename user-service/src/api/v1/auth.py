@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Request, Depends
 from src.auth.auth0 import get_auth0_manager
-from fastapi.responses import RedirectResponse
+from src.svc.user.repository import get_user_repository
+from src.svc.user.service import UserService
+from fastapi.responses import RedirectResponse, JSONResponse
 from authlib.integrations.starlette_client import OAuthError
 import logging
-from src.user.user_model import User
-
+from src.svc.user.service import get_user_service
 _router = APIRouter(prefix="/auth")
 
 
@@ -15,30 +16,45 @@ async def login(request: Request, auth0Manager = Depends(get_auth0_manager)):
         request,request.url_for("auth:callback")
     )
 
-
 @_router.get("/callback", name="auth:callback")
-async def callback(request: Request, auth0Manager = Depends(get_auth0_manager)):
+async def callback(request: Request, auth0Manager = Depends(get_auth0_manager), userSvc:UserService = Depends(get_user_service)):
 
     try:
+
         token = await auth0Manager.oauth.auth0.authorize_access_token(request)
 
-        id_token = token.get("id_token")
+        jwt_token = token.get("id_token")
 
-        decode_token = await auth0Manager.get_decoded_token(id_token)
+        decode_token = await auth0Manager.get_decoded_token(jwt_token)
 
         if decode_token is None:
+
+            logging.error("No token found")
             return RedirectResponse(request.url_for("auth:login"), status_code=303)
         
-        user = User(
-            email=decode_token.get("email"),
-        )
+        email = decode_token.get("email")
 
-        return {"user": user}
+        try:
+            query_result = await userSvc.register_user(email)
+
+            if query_result:
+
+                return JSONResponse(status_code=201, content={"detail": "User created successfully and logged in"})
+            
+            else:
+
+                return JSONResponse(status_code=200, content={"detail": "User logged in"})
+            
+        except Exception as e:
+
+            logging.error(f"Failed to insert user: {e}")
 
     except OAuthError as e:
 
         logging.error(f"OAuth error occurred: {e.error}, description: {e.description}")
+
         return RedirectResponse(request.url_for("auth:login"), status_code=303)
+    
 
     
 

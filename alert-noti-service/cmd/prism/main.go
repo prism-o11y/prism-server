@@ -22,6 +22,5 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
-
 	log.Info().Msg(config.Server.Address)
 }

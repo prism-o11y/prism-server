@@ -2,6 +2,6 @@ package data
 
 import "github.com/rs/zerolog/log"
 
-func test_call() {
+func TestCall() {
 	log.Info().Msg("test kafka library")
 }

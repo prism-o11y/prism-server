@@ -1,5 +1,5 @@
 from src.svc.user.repository import get_user_repository, UserRepository
-from fastapi import Depends, Request
+from fastapi import Depends
 from src.svc.user.user_model import User
 import datetime as dt
 
@@ -18,9 +18,7 @@ class UserService:
             updated_at=dt.datetime.now(dt.timezone.utc),
         )
 
-        return self.userRepo.create_user(user)
-
+        return await self.userRepo.create_user(user)
 
 async def get_user_service(userRepo: UserRepository = Depends(get_user_repository)) -> UserService:
-
     return UserService(userRepo)

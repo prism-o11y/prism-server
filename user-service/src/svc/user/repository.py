@@ -1,13 +1,15 @@
 from typing import Optional
 from asyncpg import Connection
+from fastapi import Depends
 from src.svc.user.user_model import User
 from src.database.postgres import get_db_connection
 
 class UserRepository:
 
-    def __init__(self):
+    def __init__(self, connection) -> None:
 
-        self.connection:Connection = get_db_connection()
+        self.connection:Connection = connection
+    
 
     async def create_user(self, user:User)-> Optional[str]:
 
@@ -20,7 +22,7 @@ class UserRepository:
                             RETURNING user_id;
                             '''
 
-            query_result= await self.connection.fetchval(
+            query_result = await self.connection.fetchval(
                 insert_query,
                 str(user.id),
                 user.email,
@@ -51,6 +53,6 @@ class UserRepository:
 
         pass
 
-async def get_user_repository() -> UserRepository:
+async def get_user_repository(connection:Connection = Depends(get_db_connection)) -> UserRepository:
 
-    return UserRepository()
+    return UserRepository(connection)

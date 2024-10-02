@@ -10,7 +10,7 @@ type Dependencies struct {
 	SMTPProvider *smtp.Provider
 }
 
-func NewDependencies() (*Dependencies, error) {
+func New() (*Dependencies, error) {
 	conf, err := conf.New()
 	if err != nil {
 		return nil, err

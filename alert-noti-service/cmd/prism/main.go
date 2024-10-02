@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/prism-o11y/prism-server/alert-noti-service/internal/conf"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/depends"
 )
 
 func main() {
@@ -17,10 +17,10 @@ func main() {
 	}
 	log.Logger = log.Output(logConfig).With().Caller().Logger()
 
-	config, err := conf.New()
+	deps, err := depends.New()
 	if err != nil {
-		log.Fatal().Err(err).Send()
+		log.Fatal().Err(err).Msg("failed to load config")
 	}
 
-	log.Info().Msg(config.Server.Address)
+	log.Info().Msg(deps.Config.Databases.Topics[0])
 }

@@ -1,7 +1,8 @@
 package data
 
-import "github.com/rs/zerolog/log"
-
-func TestCall() {
-	log.Info().Msg("test kafka library")
+type NotifiEvent struct {
+	UserID  string
+	Email   string
+	Topic   string
+	Message []byte
 }

@@ -1,8 +1,8 @@
 services:
   user-service:
     build: 
-      context: ./user-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: user-service/Dockerfile
     env_file:
       - assets/env/.env
     ports:
@@ -13,8 +13,8 @@ services:
 
   alert-noti-service:
     build: 
-      context: ./alert-noti-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: alert-noti-service/Dockerfile
     env_file:
       - assets/env/.env
     ports:
@@ -61,8 +61,6 @@ services:
 
   kafka-init:
     image: confluentinc/cp-kafka:latest
-    depends_on:
-      - kafka
     entrypoint: >
       bash -c "
       kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic log-topic &&
@@ -70,6 +68,8 @@ services:
       kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic user-topic
       "
     restart: "no"
+    depends_on:
+      - kafka
 
 volumes:
   postgres_data:

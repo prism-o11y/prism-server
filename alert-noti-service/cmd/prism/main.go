@@ -22,5 +22,7 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to load config")
 	}
 
+	log.Logger = log.With().Str("service", "alert-noti-service").Logger()
+
 	log.Info().Msg(deps.Config.Databases.Topics[0])
 }

@@ -7,7 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
 from src.database.postgres import PostgresManager
-from src.auth.auth0 import Auth0Manager
+from src.svc.auth.service import Auth0Manager
 
 
 class RestServer:

@@ -1,24 +1,24 @@
 import uuid
-import datetime as dt
 from typing import Optional
+import datetime as dt
+from pydantic import BaseModel
 
-class User:
 
-    def __init__(self, email: str, status_id:int, created_at:dt.datetime, updated_at:dt.datetime, org_id=None, last_login=None) -> None:
+class User(BaseModel):
 
-        self.id:uuid = uuid.uuid4()
+    id: uuid.UUID
 
-        self.org_id:Optional[uuid.UUID] = org_id
-    
-        self.email = email
+    org_id: Optional[uuid.UUID]
 
-        self.status_id:int = status_id
+    email: str
 
-        self.created_at = created_at
+    status_id: int
 
-        self.updated_at = updated_at
+    created_at: dt.datetime
 
-        self.last_login = last_login
+    updated_at: dt.datetime
+
+    last_login: dt.datetime | None
 
 
 

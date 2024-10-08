@@ -66,6 +66,38 @@ class Auth0Manager:
         logging.info("Successfully decoded token.")
 
         return decode_token
+    
+    async def get_management_token(self):
+
+        access_token_url:str = self.config.AUTH0_ACCESS_TOKEN_URL
+
+        payload = {
+            "client_id": self.config.AUTH0_CLIENT_ID,
+            "client_secret": self.config.AUTH0_CLIENT_SECRET,
+            "audience": self.config.AUTH0_AUDIENCE,
+            "grant_type": "client_credentials"
+        }
+
+        headers = {
+            "content-type": "application/json"
+        }
+
+        async with httpx.AsyncClient() as client:
+
+            response = await client.post(
+                access_token_url,
+                json=payload,
+                headers=headers
+            )
+
+            response.raise_for_status()
+
+            data = response.json()
+
+            return data.get("access_token")
+        
+
+
 
 async def get_auth0_manager(request: Request) -> Auth0Manager:
     return request.app.state.auth0_manager

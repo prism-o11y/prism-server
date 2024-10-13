@@ -8,4 +8,7 @@ require (
 	golang.org/x/sys v0.25.0 // indirect
 )
 
-require github.com/rs/zerolog v1.33.0
+require (
+	github.com/google/uuid v1.6.0
+	github.com/rs/zerolog v1.33.0
+)

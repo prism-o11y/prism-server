@@ -1,26 +1,27 @@
-package data
+package kafka
 
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/rs/zerolog/log"
 )
 
-type KafkaManager struct {
-	cMap map[string]*KafkaConsumer
+type ConsumerManager struct {
+	cMap map[string]*Consumer
 	mu   sync.RWMutex
 }
 
-func NewKafkaManager(brokers []string, topics []string, groupIDs []string) *KafkaManager {
-	km := &KafkaManager{
-		cMap: make(map[string]*KafkaConsumer),
+func NewConsumerManager(brokers []string, topics []string, groupIDs []string, timeout time.Duration) *ConsumerManager {
+	km := &ConsumerManager{
+		cMap: make(map[string]*Consumer),
 	}
-	km.addConsumers(brokers, topics, groupIDs)
+	km.addConsumers(brokers, topics, groupIDs, timeout)
 	return km
 }
 
-func (m *KafkaManager) addConsumers(brokers []string, topics []string, groupIDs []string) {
+func (m *ConsumerManager) addConsumers(brokers []string, topics []string, groupIDs []string, timeout time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -30,12 +31,12 @@ func (m *KafkaManager) addConsumers(brokers []string, topics []string, groupIDs 
 			continue
 		}
 
-		m.cMap[topic] = NewKafkaConsumer(brokers, topic, groupIDs[i])
+		m.cMap[topic] = NewConsumer(brokers, topic, groupIDs[i], timeout)
 		log.Info().Str("topic", topic).Msg("Added new Kafka consumer")
 	}
 }
 
-func (m *KafkaManager) GetConsumer(topic string) (*KafkaConsumer, error) {
+func (m *ConsumerManager) GetConsumer(topic string) (*Consumer, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -52,7 +53,7 @@ func (m *KafkaManager) GetConsumer(topic string) (*KafkaConsumer, error) {
 	return m.cMap[topic], nil
 }
 
-func (m *KafkaManager) Close() {
+func (m *ConsumerManager) Close() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

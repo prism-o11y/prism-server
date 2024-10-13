@@ -1,20 +1,30 @@
 package smtp
 
 import (
+	"sync"
+
 	"gopkg.in/gomail.v2"
 )
 
 type Provider struct {
-	dialer *gomail.Dialer
+	dialer      *gomail.Dialer
+	messagePool *sync.Pool
 }
 
-func NewProvider(host, email, password string, port int) *Provider {
-	dialer := gomail.NewDialer(host, port, email, password)
+func NewProvider(host string, email string, password string, port int) *Provider {
 	return &Provider{
-		dialer: dialer,
+		dialer: gomail.NewDialer(host, port, email, password),
+		messagePool: &sync.Pool{
+			New: func() interface{} {
+				return gomail.NewMessage()
+			},
+		},
 	}
 }
 
 func (s *Provider) SendMail() error {
+	m := s.messagePool.Get().(*gomail.Message)
+	defer s.messagePool.Put(m)
+
 	return nil
 }

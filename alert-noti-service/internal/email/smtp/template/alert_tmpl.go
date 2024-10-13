@@ -1,18 +1,5 @@
 package template
 
-func getAlertStyles(alertType string) (string, string) {
-	switch alertType {
-	case "Critical":
-		return "red", "🚨"
-	case "Warning":
-		return "orange", "⚠️"
-	case "Info":
-		return "blue", "ℹ️"
-	default:
-		return "gray", "❗"
-	}
-}
-
 const alertTemplate = `
 <!DOCTYPE html>
 <html>

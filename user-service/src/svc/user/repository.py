@@ -9,7 +9,6 @@ class UserRepository:
     def __init__(self, connection) -> None:
 
         self.connection:Connection = connection
-    
 
     async def create_user(self, user:User)-> Optional[str]:
 

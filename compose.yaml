@@ -1,8 +1,8 @@
 services:
   user-service:
     build: 
-      context: .
-      dockerfile: user-service/Dockerfile
+      context: ./user-service
+      dockerfile: Dockerfile
     env_file:
       - assets/env/.env
     ports:

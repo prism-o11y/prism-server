@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings
 from src.config.auth_config import Auth0Config
 from src.config.database_config import DatabaseConfig
 from src.config.server_config import ServerConfig
-
+from src.config.kafka_prod_config import UserProducerConfig
 from src.config.auth_config import Auth0Config
 
 
@@ -12,7 +12,7 @@ class BaseConfig(BaseSettings):
     SERVER: ServerConfig = ServerConfig()
     AUTH0: Auth0Config = Auth0Config()
     DATABASE: DatabaseConfig = DatabaseConfig()
-
+    USER_PRODUCER: UserProducerConfig = UserProducerConfig()
 
 @lru_cache()
 def get_base_config() -> BaseConfig:

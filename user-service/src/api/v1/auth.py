@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Request, Depends
 from src.svc.auth.service import get_auth0_manager
-from src.svc.user.repository import get_user_repository
 from src.svc.auth.service import Auth0Manager
 from src.svc.user.service import UserService
 from fastapi.responses import RedirectResponse, JSONResponse
@@ -50,15 +49,9 @@ async def callback(request: Request, auth0Manager:Auth0Manager = Depends(get_aut
         sub = decode_token.get("sub")
 
         try:
-            query_result = await userSvc.register_user(email)
+            await userSvc.register_user(email)
 
-            if query_result:
-
-                return JSONResponse(status_code=201, content={"detail": "User created successfully and logged in"})
-            
-            else:
-
-                return JSONResponse(status_code=200, content={"detail": "User logged in"})
+            return JSONResponse(status_code=201, content={"detail": "User registered"})
             
         except Exception as e:
 

@@ -3,6 +3,7 @@ package smtp
 import (
 	"sync"
 
+	"github.com/prism-o11y/prism-server/shared/data"
 	"gopkg.in/gomail.v2"
 )
 
@@ -22,7 +23,7 @@ func NewProvider(host string, email string, password string, port int) *Provider
 	}
 }
 
-func (s *Provider) SendMail() error {
+func (s *Provider) SendMail(eventData *data.EventData) error {
 	m := s.messagePool.Get().(*gomail.Message)
 	defer s.messagePool.Put(m)
 

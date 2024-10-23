@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -18,7 +19,7 @@ func NewConsumer(brokers []string, topic string, groupID string, timeout time.Du
 			Brokers: brokers,
 			Topic:   topic,
 			GroupID: groupID,
-		}),	
+		}),
 		timeout: timeout,
 	}
 }
@@ -29,6 +30,7 @@ func (k *Consumer) ReadMessage() ([]byte, error) {
 
 	msg, err := k.reader.ReadMessage(ctx)
 	if err != nil {
+		log.Error().Err(err).Msg("Failed to read message from Kafka")
 		return nil, err
 	}
 

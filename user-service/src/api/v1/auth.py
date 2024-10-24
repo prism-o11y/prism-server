@@ -57,6 +57,8 @@ async def callback(request: Request, auth0Manager:Auth0Manager = Depends(get_aut
 
             logging.error(f"Failed to insert user: {e}")
 
+            return JSONResponse(status_code=500, content={"detail": f"Failed to insert user: {e}"})
+
     except OAuthError as e:
 
         logging.error(f"OAuth error occurred: {e.error}, description: {e.description}")

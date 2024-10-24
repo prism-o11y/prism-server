@@ -23,7 +23,7 @@ services:
       - kafka
 
   db:
-    image: postgres:latest
+    image: postgres:16
     restart: always
     environment:
       POSTGRES_USER: postgres

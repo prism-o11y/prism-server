@@ -1,13 +1,14 @@
 from src.svc.user.repository import get_user_repository, UserRepository
 from fastapi import Depends
-from src.svc.user.kafka_prod import UserProducer, get_user_producer
-from src.svc.user.kafka_message_model import KafkaMessage
+from src.kafka.events import USER_EVENTS
+from src.kafka.producer import Producer, get_producer
+from src.kafka.message_model import KafkaMessage
 from src.svc.user.user_model import User
 import datetime as dt, uuid
 
 class UserService:
 
-    def __init__(self, userRepo: UserRepository, userProducer: UserProducer):
+    def __init__(self, userRepo: UserRepository, userProducer: Producer):
         
         self.userRepo = userRepo
 
@@ -26,7 +27,7 @@ class UserService:
         )
 
         kafka_message = KafkaMessage(
-            event="user.created",
+            event=USER_EVENTS.CREATED,
             payload=user.model_dump(),
             timestamp=dt.datetime.now()
         )
@@ -40,6 +41,6 @@ class UserService:
         pass
 
 async def get_user_service(userRepo: UserRepository = Depends(get_user_repository), 
-                           userProd: UserProducer = Depends(get_user_producer)) -> UserService:
+                           userProd: Producer = Depends(get_producer)) -> UserService:
     
     return UserService(userRepo,userProd)

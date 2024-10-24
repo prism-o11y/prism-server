@@ -89,5 +89,7 @@ class RestServer:
             logging.shutdown()
 
 
+
+
     def get_app(self) -> FastAPI:
         return self._app

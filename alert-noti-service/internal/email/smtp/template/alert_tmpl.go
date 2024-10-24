@@ -1,6 +1,6 @@
 package template
 
-const alertTemplate = `
+const alertTemplate string = `
 <!DOCTYPE html>
 <html>
 <head>

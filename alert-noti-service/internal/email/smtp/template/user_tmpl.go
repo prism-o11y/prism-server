@@ -1,6 +1,6 @@
 package template
 
-var userNotificationTemplate = `
+const userTemplate string = `
 <!DOCTYPE html>
 <html>
 <head>

@@ -5,5 +5,7 @@ type Handler struct {
 }
 
 func NewHandler(emailService *service) *Handler {
-	return &Handler{emailSvc: emailService}
+	return &Handler{
+		emailSvc: emailService,
+	}
 }

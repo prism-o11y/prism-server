@@ -16,7 +16,8 @@ const (
 
 type EventData struct {
 	Source SourceType
-	Data   string
+	Data   []byte
+	Email  string
 	UserID uuid.UUID
 }
 

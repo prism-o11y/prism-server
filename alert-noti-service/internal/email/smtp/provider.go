@@ -3,29 +3,49 @@ package smtp
 import (
 	"sync"
 
-	"github.com/prism-o11y/prism-server/shared/data"
 	"gopkg.in/gomail.v2"
+
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/alert"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/email/smtp/template"
 )
 
 type Provider struct {
 	dialer      *gomail.Dialer
+	tmplManager *template.Manager
 	messagePool *sync.Pool
 }
 
-func NewProvider(host string, email string, password string, port int) *Provider {
+func NewProvider(host string, port int, email string, password string) (*Provider, error) {
+	tmplManager, err := template.NewManager()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Provider{
-		dialer: gomail.NewDialer(host, port, email, password),
+		dialer:      gomail.NewDialer(host, port, email, password),
+		tmplManager: tmplManager,
 		messagePool: &sync.Pool{
 			New: func() interface{} {
 				return gomail.NewMessage()
 			},
 		},
-	}
+	}, nil
 }
 
-func (s *Provider) SendMail(eventData *data.EventData) error {
-	m := s.messagePool.Get().(*gomail.Message)
-	defer s.messagePool.Put(m)
+func (p *Provider) SendMail(data *alert.Data) error {
+	m := p.messagePool.Get().(*gomail.Message)
+	defer p.messagePool.Put(m)
 
-	return nil
+	m.SetHeader("From", p.dialer.Username)
+	m.SetHeader("To", data.Recipient)
+	m.SetHeader("Subject", "Alert Notification")
+
+	body, err := p.tmplManager.GenerateAlertBody(data)
+	if err != nil {
+		return err
+	}
+
+	m.SetBody("text/html", body)
+
+	return p.dialer.DialAndSend(m)
 }

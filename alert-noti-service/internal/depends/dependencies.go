@@ -21,7 +21,11 @@ func New() (*Dependencies, error) {
 		return nil, err
 	}
 
-	smtpProvider := smtp.NewProvider(conf.Smtp.Host, conf.Smtp.Email, conf.Smtp.Password, conf.Smtp.Port)
+	smtpProvider, err := smtp.NewProvider(conf.Smtp.Host, conf.Smtp.Port, conf.Smtp.Email, conf.Smtp.Password)
+	if err != nil {
+		return nil, err
+	}
+
 	consManager := kafka.NewConsumerManager(
 		[]string{conf.Databases.KafkaAddress},
 		conf.Databases.Topics,

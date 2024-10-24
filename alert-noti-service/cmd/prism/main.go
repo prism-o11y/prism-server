@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/alert"
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/depends"
 )
 
@@ -22,7 +23,15 @@ func main() {
 		log.Fatal().Err(err).Msg("failed to load config")
 	}
 
-	log.Logger = log.With().Str("service", "alert-noti-service").Logger()
+	sampleData := &alert.Data{
+		Recipient: "tuan882612@gmail.com",
+		Severity:  alert.INFO,
+		Message:   "This is a sample message",
+		DateTime:  time.Now(),
+	}
 
-	log.Info().Msg(deps.Config.Databases.Topics[0])
+	provider := deps.SMTPProvider
+	if err := provider.SendMail(sampleData); err != nil {
+		log.Error().Err(err).Msg("failed to send email")
+	}
 }

@@ -31,7 +31,7 @@ func (s *service) SendEmail() error {
 		return err
 	}
 
-	log.Info().Msgf("Sending email for user %s", eventData.UserID)
+	log.Info().Msgf("Sending email to %v", eventData.Email)
 
 	return nil
 }

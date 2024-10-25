@@ -1,15 +1,4 @@
 services:
-  user-service:
-    build: 
-      context: ./user-service
-      dockerfile: Dockerfile
-    env_file:
-      - assets/env/.env
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-      - kafka
 
   alert-noti-service:
     build: 
@@ -23,7 +12,7 @@ services:
       - kafka
 
   db:
-    image: postgres:latest
+    image: postgres:16  
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -33,6 +22,7 @@ services:
       - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -69,6 +59,18 @@ services:
       "
     restart: "no"
     depends_on:
+      - kafka
+
+  user-service:
+    build: 
+      context: ./user-service
+      dockerfile: Dockerfile
+    env_file:
+      - assets/env/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
       - kafka
 
 volumes:

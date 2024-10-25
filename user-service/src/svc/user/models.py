@@ -21,4 +21,3 @@ class User(BaseModel):
     last_login: dt.datetime | None
 
 
-

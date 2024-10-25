@@ -1,7 +1,7 @@
 from typing import Optional
 from asyncpg import Connection
 from fastapi import Depends
-from src.svc.user.user_model import User
+from src.svc.user.models import User
 from src.database.postgres import get_db_connection
 
 class UserRepository:

@@ -1,4 +1,4 @@
-import logging, os, asyncio
+import logging, os
 from typing import AsyncGenerator, Awaitable, Callable
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi import FastAPI, Request, Response
@@ -8,7 +8,6 @@ from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
 from src.database.postgres import PostgresManager
 from src.svc.auth.service import Auth0Manager
-from src.kafka.consumer import InsertUserConsumer
 
 
 
@@ -59,15 +58,11 @@ class RestServer:
         postgres_manager: PostgresManager = app.state.postgres_manager
         await postgres_manager.connect()
 
-        insert_user_consumer = InsertUserConsumer(self.config)
+        try:        
+            yield
 
-        insert_user_task = asyncio.create_task(insert_user_consumer.consume())
-
-        yield
-
-        insert_user_task.cancel()
-
-        await postgres_manager.disconnect()
+        finally:
+            await postgres_manager.disconnect()
 
 
 

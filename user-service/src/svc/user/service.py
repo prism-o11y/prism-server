@@ -1,6 +1,6 @@
 from src.svc.user.repository import get_user_repository, UserRepository
 from fastapi import Depends
-from src.svc.user.user_model import User
+from .models import User
 import datetime as dt, uuid
 
 class UserService:
@@ -21,7 +21,7 @@ class UserService:
             last_login = None
         )
 
-        # return await self.userRepo.create_user(user)
+        return await self.userRepo.create_user(user)
     
     async def get_login_dates(self, user_id: str, access_token: str):
 

@@ -1,5 +1,5 @@
 from src.svc.user.repository import get_user_repository, UserRepository
-from ...kafka.producer import KafkaProducerService, get_kafka_producer_service
+from src.kafka import KafkaProducerService, get_kafka_producer_service
 from ...kafka import model
 from fastapi import Depends
 from ...database.postgres import get_postgres_manager, PostgresManager

@@ -8,6 +8,8 @@ from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
 from src.database.postgres import PostgresManager
 from src.svc.auth.service import Auth0Manager
+from src.kafka.kafka_consumer import ConsumerManager
+from src.kafka.kafka_producer import ProducerManager
 
 
 
@@ -58,10 +60,24 @@ class RestServer:
         postgres_manager: PostgresManager = app.state.postgres_manager
         await postgres_manager.connect()
 
+        kafka_consumer_manager = ConsumerManager(postgres_manager)
+        self._app.state.kafka_consumer_manager = kafka_consumer_manager
+        await kafka_consumer_manager.init_kafka_consumers(
+            self.config.KAFKA.BROKERS,
+            self.config.KAFKA.TOPIC.split(","),
+            self.config.KAFKA.GROUP_ID.split(","),
+        )
+
+        producer_manager = ProducerManager(self.config.KAFKA.BROKERS)
+        self._app.state.kafka_producer_manager = producer_manager
+        await producer_manager.init_producer()
+
         try:        
             yield
 
         finally:
+            await kafka_consumer_manager.stop_kafka_consumers()
+            await ProducerManager.stop_producer() 
             await postgres_manager.disconnect()
 
 

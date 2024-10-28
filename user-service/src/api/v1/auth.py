@@ -49,7 +49,7 @@ async def callback(request: Request, auth0Manager:Auth0Manager = Depends(get_aut
         sub = decode_token.get("sub")
 
         try:
-            await userSvc.register_user(email)
+            await userSvc.create_user(email)
 
             return JSONResponse(status_code=201, content={"detail": "User registered"})
             

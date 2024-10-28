@@ -1,53 +1,83 @@
-from confluent_kafka import Consumer, KafkaError
-import logging
+from aiokafka import AIOKafkaConsumer
+from ..svc.user.service import UserService
+from ..svc.user.repository import UserRepository
+from ..database.postgres import PostgresManager
+from .model import KafkaMessage
+import asyncio, json, logging
 
-class KafkaConsumer:
+class ConsumerManager:
 
-    def __init__(self, brokers, topic, group_id):
+    def __init__(self, postgres_manager:PostgresManager):
+        self.kafka_consumers = {}
+        self.consumer_tasks = []
+        self.action_handler = {
+            'insert_user': self.insert_user,
+            'update_user': None,
+            'delete_user': None,
+        }
+        self.postgres_manager = postgres_manager
+        self.repo = UserRepository(self.postgres_manager.get_connection())
+        self.user_svc = UserService(self.repo)
+
+
+    async def init_kafka_consumers(self, broker, topics, group_ids):
+
+        for topic, group_id in zip(topics, group_ids):
+            self.kafka_consumers[topic] = AIOKafkaConsumer(
+                topic,
+                bootstrap_servers = broker,
+                group_id = group_id,
+                enable_auto_commit = True,
+                auto_offset_reset = 'earliest'
+            )
+
+            await self.kafka_consumers[topic].start()
+            task = asyncio.create_task(self.consume_message(self.kafka_consumers[topic], topic))
+            self.consumer_tasks.append(task)
+
+    async def consume_message(self, consumer, topic):
+
+        async for msg in consumer:
+
+            try:
+                msg_value = msg.value.decode('utf-8')
+                msg_data = json.loads(msg_value)
+                msg_object = KafkaMessage(**msg_data)
+                await self.process_message(topic,msg_object.action, msg_object.data)
+
+            except Exception as e:
+                logging.exception(f"Error processing message from topic {topic}: {e}")
+            
+    async def process_message(self, topic, action, data):
+
+        handler = self.action_handler.get(action)
+
+        if handler:
+            await handler(topic, data)
+
+        else:
+            raise Exception(f"No handler found for action {action} on topic {topic}")
         
-        self.topic = topic
-
-        self.consumer = Consumer({
-            'bootstrap.servers': brokers,
-            'group.id': group_id,
-            'auto.offset.reset': 'earliest'
-        })
-
-        self.consumer.subscribe([self.topic])
-
-    def read_message(self, timeout=5):
+    async def insert_user(self, topic, data):
+        logging.info(f"{topic} - Attempting Inserting user: {data.get('email')}\n {data}")
 
         try:
+            await self.user_svc.register_user_kafka(data)
+            logging.info(f"{topic} - User registered: {data.get('email')}")
 
-            msg = self.consumer.poll(timeout)
-
-            if msg is None:
-
-                raise Exception("No message received with the timeout period")
-            
-            if msg.error():
-                
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    
-                    logging.debug(f"Reached end of partition {msg.topic()} [{msg.partition()}] at offset {msg.offset()}")
-
-                elif msg.error():
-
-                    raise KafkaError(msg.error())
-            
-            return msg.value()
-        
-        except KafkaError as e:
-
-            logging.error(f"Kafka error occured: {e}")
-            
-            raise e
-        
         except Exception as e:
+            logging.exception(f"Failed to insert user: {e}")
+        
 
-            logging.error(f"Error occured: {e}")
-            
-            raise e
-    
-    def close(self):
-        self.consumer.close()
+    async def stop_kafka_consumers(self):
+        for consumer in self.kafka_consumers.values():
+            await consumer.stop()
+
+        for task in self.consumer_tasks:
+            task.cancel()
+
+            try:
+                await task
+
+            except asyncio.CancelledError:  
+                pass

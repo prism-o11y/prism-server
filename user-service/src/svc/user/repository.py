@@ -2,13 +2,13 @@ from typing import Optional
 from asyncpg import Connection
 from fastapi import Depends
 from src.svc.user.models import User
-from src.database.postgres import get_db_connection
-
+from src.database.postgres import PostgresManager, get_db_connection
+from asyncpg import Connection
 class UserRepository:
 
     def __init__(self, connection) -> None:
 
-        self.connection:Connection = connection
+        self.connection = connection
 
     async def create_user(self, user:User)-> Optional[str]:
 

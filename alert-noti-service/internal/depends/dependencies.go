@@ -21,7 +21,7 @@ func New() (*Dependencies, error) {
 		return nil, err
 	}
 
-	smtpProvider, err := smtp.NewProvider(conf.Smtp.Host, conf.Smtp.Port, conf.Smtp.Email, conf.Smtp.Password)
+	smtpProvider, err := smtp.NewProvider(conf.Smtp)
 	if err != nil {
 		return nil, err
 	}

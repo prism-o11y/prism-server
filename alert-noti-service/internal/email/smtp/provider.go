@@ -6,6 +6,7 @@ import (
 	"gopkg.in/gomail.v2"
 
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/alert"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/conf"
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/email/smtp/template"
 )
 
@@ -15,14 +16,14 @@ type Provider struct {
 	messagePool *sync.Pool
 }
 
-func NewProvider(host string, port int, email string, password string) (*Provider, error) {
+func NewProvider(cfg *conf.Smtp) (*Provider, error) {
 	tmplManager, err := template.NewManager()
 	if err != nil {
 		return nil, err
 	}
 
 	return &Provider{
-		dialer:      gomail.NewDialer(host, port, email, password),
+		dialer:      gomail.NewDialer(cfg.Host, cfg.Port, cfg.Email, cfg.Password),
 		tmplManager: tmplManager,
 		messagePool: &sync.Pool{
 			New: func() interface{} {

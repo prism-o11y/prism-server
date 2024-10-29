@@ -60,24 +60,25 @@ class RestServer:
         postgres_manager: PostgresManager = app.state.postgres_manager
         await postgres_manager.connect()
 
-        kafka_consumer_manager = ConsumerManager(postgres_manager)
-        self._app.state.kafka_consumer_manager = kafka_consumer_manager
-        await kafka_consumer_manager.init_kafka_consumers(
-            self.config.KAFKA.BROKERS,
-            self.config.KAFKA.TOPIC.split(","),
-            self.config.KAFKA.GROUP_ID.split(","),
+        kafka_consumer_manager = ConsumerManager(
+            self.config.KAFKA.BROKER,
+            self.config.KAFKA.TOPIC,
+            self.config.KAFKA.GROUP_ID
         )
+        await kafka_consumer_manager.init_kafka_consumer()
 
-        producer_manager = ProducerManager(self.config.KAFKA.BROKERS)
-        self._app.state.kafka_producer_manager = producer_manager
-        await producer_manager.init_producer()
+        kafka_producer_manager = ProducerManager(self.config.KAFKA.BROKER)
+        await kafka_producer_manager.init_producer()
+
+        self._app.state.consumer_manager = kafka_consumer_manager
+        self._app.state.producer_manager = kafka_producer_manager
 
         try:        
             yield
 
         finally:
             await kafka_consumer_manager.stop_kafka_consumers()
-            await ProducerManager.stop_producer() 
+            await kafka_producer_manager.stop_producer()
             await postgres_manager.disconnect()
 
 

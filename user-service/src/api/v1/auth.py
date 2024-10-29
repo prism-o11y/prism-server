@@ -11,28 +11,27 @@ _router = APIRouter(prefix="/auth")
 
 @_router.get("/login",name="auth:login")
 async def login(request: Request, auth0Manager = Depends(get_auth0_manager)):
-
     return await auth0Manager.oauth.auth0.authorize_redirect(
         request,request.url_for("auth:callback")
     )
 
 @_router.get("/callback", name="auth:callback")
-async def callback(request: Request, auth0Manager:Auth0Manager = Depends(get_auth0_manager), userSvc:UserService = Depends(get_user_service)):
+async def callback(request: Request, auth0Manager:Auth0Manager = Depends(get_auth0_manager), user_svc:UserService = Depends(get_user_service)):
 
     try:
 
         token = await auth0Manager.oauth.auth0.authorize_access_token(request)
 
-        mgmt_token = await auth0Manager.get_management_token()
+        # mgmt_token = await auth0Manager.get_management_token()
 
-        if mgmt_token is None:
+        # if mgmt_token is None:
 
-            logging.exception("Failed to get management token: ")
+        #     logging.exception("Failed to get management token: ")
 
-            return JSONResponse(
-                status_code=500,
-                content={"detail": "Failed to get management token"}
-            )
+        #     return JSONResponse(
+        #         status_code=500,
+        #         content={"detail": "Failed to get management token"}
+        #     )
 
         jwt_token = token.get("id_token")    
 
@@ -49,7 +48,7 @@ async def callback(request: Request, auth0Manager:Auth0Manager = Depends(get_aut
         sub = decode_token.get("sub")
 
         try:
-            await userSvc.create_user(email)
+            await user_svc.create_user(email)
 
             return JSONResponse(status_code=201, content={"detail": "User registered"})
             

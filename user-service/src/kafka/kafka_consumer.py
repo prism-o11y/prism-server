@@ -2,38 +2,47 @@ from aiokafka import AIOKafkaConsumer
 from ..svc.user.service import UserService
 from ..svc.user.repository import UserRepository
 from ..database.postgres import PostgresManager
+from fastapi import Request
 from .model import KafkaMessage
 import asyncio, json, logging
 
 class ConsumerManager:
 
-    def __init__(self, postgres_manager:PostgresManager):
-        self.kafka_consumers = {}
-        self.consumer_tasks = []
-        self.action_handler = {
-            'insert_user': self.insert_user,
-            'update_user': None,
-            'delete_user': None,
-        }
-        self.postgres_manager = postgres_manager
-        self.repo = UserRepository(self.postgres_manager.get_connection())
-        self.user_svc = UserService(self.repo)
+    # def __init__(self, postgres_manager:PostgresManager, broker, topic, group_id):
+    #     self.broker = broker
+    #     self.topics = topic
+    #     self.group_ids = group_id
+    #     self.kafka_consumers = {}
+    #     self.consumer_tasks = []
+    #     self.action_handler = {
+    #         'insert_user': self.insert_user,
+    #         'update_user': None,
+    #         'delete_user': None,
+    #     }
+    #     self.postgres_manager = postgres_manager
+    #     self.repo = None
+    #     self.user_svc = None
 
+    def __init__(self, broker, topic, group_id):
 
-    async def init_kafka_consumers(self, broker, topics, group_ids):
+        self.broker = broker
+        self.topic = topic
+        self.group_id = group_id
 
-        for topic, group_id in zip(topics, group_ids):
-            self.kafka_consumers[topic] = AIOKafkaConsumer(
-                topic,
-                bootstrap_servers = broker,
-                group_id = group_id,
-                enable_auto_commit = True,
-                auto_offset_reset = 'earliest'
-            )
+        self.user_consumer = AIOKafkaConsumer(
+            self.topic,
+            bootstrap_servers=self.broker,
+            group_id=self.group_id,
+            enable_auto_commit=True,
+            auto_offset_reset='earliest'
+        )
 
-            await self.kafka_consumers[topic].start()
-            task = asyncio.create_task(self.consume_message(self.kafka_consumers[topic], topic))
-            self.consumer_tasks.append(task)
+        self.user_consumer_task = None
+
+    async def init_kafka_consumer(self):
+
+        await self.user_consumer.start()
+        self.user_consumer_task = asyncio.create_task(self.consume_message(self.user_consumer, self.topic))
 
     async def consume_message(self, consumer, topic):
 
@@ -59,7 +68,6 @@ class ConsumerManager:
             raise Exception(f"No handler found for action {action} on topic {topic}")
         
     async def insert_user(self, topic, data):
-        logging.info(f"{topic} - Attempting Inserting user: {data.get('email')}\n {data}")
 
         try:
             await self.user_svc.register_user_kafka(data)
@@ -71,6 +79,17 @@ class ConsumerManager:
 
     async def stop_kafka_consumers(self):
         for consumer in self.kafka_consumers.values():
+            await consumer.commit()
+
+            while True:
+
+                messages = await consumer.poll(1.0)
+
+                if not messages:
+                    break
+
+                for message in messages:
+                    await self.process_message()
             await consumer.stop()
 
         for task in self.consumer_tasks:
@@ -81,3 +100,8 @@ class ConsumerManager:
 
             except asyncio.CancelledError:  
                 pass
+
+async def get_consumer_manager(request: Request) -> ConsumerManager:
+
+    return request.app.state.consumer_manager
+

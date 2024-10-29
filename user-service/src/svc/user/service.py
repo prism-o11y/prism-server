@@ -3,12 +3,15 @@ from ...kafka import model
 from fastapi import Depends
 from .models import User
 import datetime as dt, uuid, logging
+from ...kafka.kafka_producer import ProducerManager
+from ...kafka.kafka_producer import get_producer_manager
 
 class UserService:
 
-    def __init__(self, userRepo: UserRepository):
+    def __init__(self, userRepo: UserRepository, producer_manager:ProducerManager):
         
         self.userRepo = userRepo
+        self.producer_manager = producer_manager
 
     async def create_user(self, email: str):
 
@@ -22,19 +25,24 @@ class UserService:
             last_login = None
         )
 
-        message = model.KafkaMessage(
-            action = 'insert_user',
-            data = user.model_dump()
+        data = model.KafkaData(
+            action = model.Action.INSERT_USER,
+            user_data = user.model_dump()
         )
 
-        return await self.userRepo.create_user(user)
+        message = model.KafkaMessage(
+            data = data.model_dump_json().encode('utf-8'),
+            service = model.Service.USER,
+            email = user.email,
+            user_id = str(user.id)
+        )
+
+        await self.producer_manager.send_message('user',message.model_dump_json())
     
     async def register_user_kafka(self, data: dict):
 
         try:
-
             user = User(**data)
-
             query_result = await self.userRepo.create_user(user)
 
             if query_result:
@@ -44,7 +52,6 @@ class UserService:
                 logging.info(f"User already exists: {user.email}, user logged in.")
 
         except Exception as e:
-
             logging.exception(f"Failed to register user: {e}")
             
     
@@ -52,6 +59,9 @@ class UserService:
 
         pass
 
-async def get_user_service(userRepo: UserRepository = Depends(get_user_repository)) -> UserService:
+async def get_user_service(
+        userRepo: UserRepository = Depends(get_user_repository), 
+        producer_manager:ProducerManager = Depends(get_producer_manager)
+    ) -> UserService:
     
-    return UserService(userRepo)
+    return UserService(userRepo, producer_manager)

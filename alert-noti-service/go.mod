@@ -19,6 +19,7 @@ require (
 )
 
 require (
+	github.com/go-chi/chi/v5 v5.1.0
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/json-iterator/go v1.1.12
 	github.com/mattn/go-colorable v0.1.13 // indirect

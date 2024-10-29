@@ -1,7 +1,9 @@
 package server
 
-type Server struct{}
+type Server struct {
+}
 
 func New() (*Server, error) {
-	return &Server{}, nil
+	svr := &Server{}
+	return svr, nil
 }

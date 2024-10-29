@@ -1,12 +1,13 @@
-import logging
+import logging, os
 from typing import AsyncGenerator, Awaitable, Callable
-
+from starlette.middleware.sessions import SessionMiddleware
 from fastapi import FastAPI, Request, Response
 from fastapi.concurrency import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
 from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
 from src.database.postgres import PostgresManager
+from src.auth.auth0 import Auth0Manager
 
 
 class RestServer:
@@ -18,6 +19,7 @@ class RestServer:
             lifespan=self.lifespan_context,
         )
         self._app.state.postgres_manager = PostgresManager(config)
+        self._app.state.auth0_manager = Auth0Manager(config)
         self._setup_middlewares(config)
         self._setup_routes()
         logging.info("REST server initialized.")
@@ -30,14 +32,19 @@ class RestServer:
             allow_methods=["*"],
             allow_headers=config.SERVER.ALLOWED_HEADERS,
         )
+        self._app.add_middleware(
+            SessionMiddleware,
+            secret_key=os.getenv("SECRET_KEY"),
+        )
 
         @self._app.middleware("http")
         async def remove_server_header(
             request: Request, call_next: Callable[[Request], Awaitable[Response]]
         ) -> Response:
             response = await call_next(request)
-            response.headers.pop("server", None)
-            logging.debug("Removed server header.")
+            if "server" in response.headers:
+                del response.headers["server"]
+                logging.debug("Removed server header.")
             return response
 
     def _setup_routes(self) -> None:

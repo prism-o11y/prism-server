@@ -34,7 +34,10 @@ func NewProvider(host string, port int, email string, password string) (*Provide
 
 func (p *Provider) SendMail(data *alert.Data) error {
 	m := p.messagePool.Get().(*gomail.Message)
-	defer p.messagePool.Put(m)
+	defer func() {
+		m.Reset()
+		p.messagePool.Put(m)
+	}()
 
 	m.SetHeader("From", p.dialer.Username)
 	m.SetHeader("To", data.Recipient)

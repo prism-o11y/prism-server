@@ -14,7 +14,7 @@ func NewHandler(emailService *service) *Handler {
 
 func (h *Handler) Start() {
 	for {
-		if err := h.emailSvc.SendEmail(); err != nil {
+		if err := h.emailSvc.ConsumeEmail(); err != nil {
 			log.Error().Err(err).Msg("Failed to send email")
 		}
 

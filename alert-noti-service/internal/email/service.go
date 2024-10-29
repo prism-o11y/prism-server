@@ -20,7 +20,7 @@ func newService(smtpProvider *smtp.Provider, alertConsumer *kafka.Consumer) *ser
 	}
 }
 
-func (s *service) SendEmail() error {
+func (s *service) ConsumeEmail() error {
 	msg, err := s.alertConsumer.ReadMessage()
 	if err != nil {
 		return err

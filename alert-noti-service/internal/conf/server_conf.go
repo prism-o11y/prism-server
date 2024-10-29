@@ -1,6 +1,6 @@
 package conf
 
-type server struct {
+type Server struct {
 	Name           string `env:"NAME, required"`
 	Address        string `env:"EMAIL_ADDR, required"`
 	AllowOrigins   Tokens `env:"ALLOWED_ORIGINS, required"`

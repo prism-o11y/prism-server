@@ -1,6 +1,6 @@
 package conf
 
-type smtp struct {
+type Smtp struct {
 	Host     string `env:"HOST, required"`
 	Port     int    `env:"PORT, required"`
 	Email    string `env:"EMAIL, required"`

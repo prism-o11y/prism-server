@@ -17,9 +17,9 @@ func (t *Tokens) UnmarshalText(text []byte) error {
 }
 
 type Config struct {
-	Server    Server    `env:", prefix=SERVER_"`
-	Databases Databases `env:", prefix=DATABASE_"`
-	Smtp      Smtp      `env:", prefix=SMTP_"`
+	Server    *Server    `env:", prefix=SERVER_"`
+	Databases *Databases `env:", prefix=DATABASE_"`
+	Smtp      *Smtp      `env:", prefix=SMTP_"`
 }
 
 func New() (*Config, error) {

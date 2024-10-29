@@ -1,23 +1,63 @@
 package email
 
-import "github.com/rs/zerolog/log"
+import (
+	"context"
+	"time"
+
+	"github.com/prism-o11y/prism-server/shared/data/kafka"
+	"github.com/rs/zerolog/log"
+
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/alert"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/email/smtp"
+)
 
 type Handler struct {
-	emailSvc *service
+	smtpProvider *smtp.Provider
+	consumer     *kafka.Consumer
 }
 
-func NewHandler(emailService *service) *Handler {
+func NewHandler(smtpProvider *smtp.Provider, consumer *kafka.Consumer) *Handler {
 	return &Handler{
-		emailSvc: emailService,
+		smtpProvider: smtpProvider,
+		consumer:     consumer,
 	}
 }
 
-func (h *Handler) Start() {
+func (h *Handler) Start(ctx context.Context) {
 	for {
-		if err := h.emailSvc.ConsumeEmail(); err != nil {
-			log.Error().Err(err).Msg("Failed to send email")
-		}
+		select {
+		case <-ctx.Done():
+			log.Info().Msg("Handler shutdown initiated")
+			return
+		default:
+			msg, err := h.consumer.ReadMessage()
+			if err != nil {
+				continue
+			}
 
-		log.Info().Msg("Email sent successfully")
+			if err := h.processMessage(msg); err != nil {
+				log.Error().Err(err).Msg("Failed to process message")
+			}
+		}
 	}
+}
+
+func (h *Handler) processMessage(msg []byte) error {
+	alertData, err := alert.ParseAlertData(msg)
+	if err != nil {
+		return err
+	}
+
+	retryAttempts := 3
+	for i := 0; i < retryAttempts; i++ {
+		if err := h.smtpProvider.SendMail(alertData); err != nil {
+			log.Warn().Err(err).Msgf("Retrying to send email (%d/%d)", i+1, retryAttempts)
+			time.Sleep(time.Second * 2)
+			continue
+		}
+		log.Info().Str("recipient", alertData.Recipient).Msg("Email sent successfully")
+		return nil
+	}
+
+	return err
 }

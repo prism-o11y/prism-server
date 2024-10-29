@@ -1,19 +1,6 @@
 package template
 
-func getAlertStyles(alertType string) (string, string) {
-	switch alertType {
-	case "Critical":
-		return "red", "🚨"
-	case "Warning":
-		return "orange", "⚠️"
-	case "Info":
-		return "blue", "ℹ️"
-	default:
-		return "gray", "❗"
-	}
-}
-
-const alertTemplate = `
+const alertTemplate string = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -59,10 +46,10 @@ const alertTemplate = `
 <body>
     <div class="email-container">
         <div class="header">System Alert Notification</div>
-        <p>Hi {{.RecipientName}},</p>
-        <p class="alert-type">Alert Type: {{.AlertType}}</p>
-        <p class="error-details">Details: {{.ErrorDetails}}</p>
-        <p class="error-details">Date: {{.Date}}</p>
+        <p>Hi {{.Recipient}},</p>
+        <p class="alert-type">Alert Type: {{.Severity}}</p>
+        <p class="error-details">Details: {{.Message}}</p>
+        <p class="error-details">Date and Time: {{.DateTime}}</p>
         <p>If you need to take action, please review the logs and resolve the issue promptly.</p>
         <div class="footer">This is an automated message from your monitoring system.</div>
     </div>

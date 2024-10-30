@@ -1,15 +1,4 @@
 services:
-  user-service:
-    build: 
-      context: ./user-service
-      dockerfile: Dockerfile
-    env_file:
-      - assets/env/.env
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-      - kafka
 
   user-service:
     build: 

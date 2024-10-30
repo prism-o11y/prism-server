@@ -3,7 +3,7 @@ from ..svc.user.service import UserService
 from ..svc.user.repository import UserRepository
 from ..database.postgres import PostgresManager
 from fastapi import Request
-from .model import KafkaMessage
+from .model import EventData
 import asyncio, json, logging
 
 class ConsumerManager:
@@ -51,7 +51,7 @@ class ConsumerManager:
             try:
                 msg_value = msg.value.decode('utf-8')
                 msg_data = json.loads(msg_value)
-                msg_object = KafkaMessage(**msg_data)
+                msg_object = EventData(**msg_data)
                 await self.process_message(topic,msg_object.action, msg_object.data)
 
             except Exception as e:

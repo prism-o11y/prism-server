@@ -65,13 +65,13 @@ class RestServer:
             self.config.KAFKA.TOPIC,
             self.config.KAFKA.GROUP_ID
         )
-        await kafka_consumer_manager.init_kafka_consumer()
 
         kafka_producer_manager = ProducerManager(self.config.KAFKA.BROKER)
+        app.state.consumer_manager = kafka_consumer_manager
+        app.state.producer_manager = kafka_producer_manager
+        
+        await kafka_consumer_manager.init_kafka_consumer()
         await kafka_producer_manager.init_producer()
-
-        self._app.state.consumer_manager = kafka_consumer_manager
-        self._app.state.producer_manager = kafka_producer_manager
 
         try:        
             yield

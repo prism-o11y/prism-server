@@ -5,9 +5,9 @@ import (
 
 	"gopkg.in/gomail.v2"
 
-	"github.com/prism-o11y/prism-server/alert-noti-service/internal/alert"
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/conf"
-	"github.com/prism-o11y/prism-server/alert-noti-service/internal/email/smtp/template"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/models"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/template"
 )
 
 type Provider struct {
@@ -33,7 +33,7 @@ func NewProvider(cfg *conf.Smtp) (*Provider, error) {
 	}, nil
 }
 
-func (p *Provider) SendMail(data *alert.Data) error {
+func (p *Provider) SendMail(data *models.NotifyRequest) error {
 	m := p.messagePool.Get().(*gomail.Message)
 	defer func() {
 		m.Reset()
@@ -44,7 +44,7 @@ func (p *Provider) SendMail(data *alert.Data) error {
 	m.SetHeader("To", data.Recipient)
 	m.SetHeader("Subject", "Alert Notification")
 
-	body, err := p.tmplManager.GenerateAlertBody(data)
+	body, err := p.tmplManager.GenerateNotifyBody(data)
 	if err != nil {
 		return err
 	}

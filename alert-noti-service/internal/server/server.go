@@ -9,11 +9,12 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/depends"
-	"github.com/prism-o11y/prism-server/alert-noti-service/internal/email"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify"
+	"github.com/prism-o11y/prism-server/alert-noti-service/pkg/server"
 )
 
 type Server struct {
-	emailHandler *email.Handler
+	emailHandler *notify.Handler
 	router       *chi.Mux
 	server       *http.Server
 }
@@ -24,7 +25,7 @@ func New(deps *depends.Dependencies) (*Server, error) {
 		return nil, err
 	}
 
-	handler := email.NewHandler(deps.SMTPProvider, consumer)
+	handler := notify.NewHandler(deps.SMTPProvider, consumer)
 	router := chi.NewRouter()
 
 	s := &Server{
@@ -42,12 +43,7 @@ func New(deps *depends.Dependencies) (*Server, error) {
 }
 
 func (s *Server) routes() {
-	s.router.Get("/health", s.healthCheckHandler)
-}
-
-func (s *Server) healthCheckHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Service is healthy"))
+	s.router.Get("/health", server.HealthCheckHandler)
 }
 
 func (s *Server) Start(ctx context.Context) {

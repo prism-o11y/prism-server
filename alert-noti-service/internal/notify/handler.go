@@ -1,4 +1,4 @@
-package email
+package notify
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"github.com/prism-o11y/prism-server/shared/data/kafka"
 	"github.com/rs/zerolog/log"
 
-	"github.com/prism-o11y/prism-server/alert-noti-service/internal/alert"
-	"github.com/prism-o11y/prism-server/alert-noti-service/internal/email/smtp"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/models"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/smtp"
 )
 
 type Handler struct {
@@ -43,19 +43,19 @@ func (h *Handler) Start(ctx context.Context) {
 }
 
 func (h *Handler) processMessage(msg []byte) error {
-	alertData, err := alert.ParseAlertData(msg)
+	request, err := models.ParseNotifyRequest(msg)
 	if err != nil {
 		return err
 	}
 
 	retryAttempts := 3
 	for i := 0; i < retryAttempts; i++ {
-		if err := h.smtpProvider.SendMail(alertData); err != nil {
+		if err := h.smtpProvider.SendMail(request); err != nil {
 			log.Warn().Err(err).Msgf("Retrying to send email (%d/%d)", i+1, retryAttempts)
 			time.Sleep(time.Second * 2)
 			continue
 		}
-		log.Info().Str("recipient", alertData.Recipient).Msg("Email sent successfully")
+		log.Info().Str("recipient", request.Recipient).Msg("Email sent successfully")
 		return nil
 	}
 

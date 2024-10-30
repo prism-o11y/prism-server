@@ -5,7 +5,7 @@ import (
 	"html/template"
 	"sync"
 
-	"github.com/prism-o11y/prism-server/alert-noti-service/internal/alert"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/models"
 )
 
 type Manager struct {
@@ -13,7 +13,7 @@ type Manager struct {
 }
 
 func NewManager() (*Manager, error) {
-	tmpl, err := template.New("alert").Parse(alertTemplate)
+	tmpl, err := template.New("alert").Parse(AlertTemplate)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func NewManager() (*Manager, error) {
 	}, nil
 }
 
-func (m *Manager) GenerateAlertBody(data *alert.Data) (string, error) {
+func (m *Manager) GenerateNotifyBody(data *models.NotifyRequest) (string, error) {
 	tmpl := m.templatePool.Get().(*template.Template)
 	defer m.templatePool.Put(tmpl)
 

@@ -1,5 +1,4 @@
-// internal/alert/models.go
-package alert
+package models
 
 import (
 	"encoding/json"
@@ -8,7 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type Data struct {
+type NotifyRequest struct {
 	Recipient string        `json:"recipient"`
 	Severity  AlertSeverity `json:"severity"`
 	Message   string        `json:"message"`
@@ -23,11 +22,11 @@ const (
 	Info     AlertSeverity = "INFO"
 )
 
-func ParseAlertData(msg []byte) (*Data, error) {
-	var data Data
-	if err := json.Unmarshal(msg, &data); err != nil {
+func ParseNotifyRequest(msg []byte) (*NotifyRequest, error) {
+	data := &NotifyRequest{}
+	if err := json.Unmarshal(msg, data); err != nil {
 		log.Error().Err(err).Msg("Failed to parse alert data")
 		return nil, err
 	}
-	return &data, nil
+	return data, nil
 }

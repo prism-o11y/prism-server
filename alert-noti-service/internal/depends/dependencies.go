@@ -6,7 +6,7 @@ import (
 	"github.com/prism-o11y/prism-server/shared/data/kafka"
 
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/conf"
-	"github.com/prism-o11y/prism-server/alert-noti-service/internal/email/smtp"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/smtp"
 )
 
 type Dependencies struct {

@@ -7,17 +7,16 @@ import (
 
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/conf"
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/models"
-	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/template"
 )
 
 type Provider struct {
 	dialer      *gomail.Dialer
-	tmplManager *template.Manager
+	tmplManager *TemplateManager
 	messagePool *sync.Pool
 }
 
 func NewProvider(cfg *conf.Smtp) (*Provider, error) {
-	tmplManager, err := template.NewManager()
+	tmplManager, err := NewTemplateManager()
 	if err != nil {
 		return nil, err
 	}

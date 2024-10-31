@@ -1,4 +1,4 @@
-package template
+package templates
 
 const AlertTemplate string = `
 <!DOCTYPE html>

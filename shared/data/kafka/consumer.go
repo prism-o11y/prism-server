@@ -9,41 +9,65 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+type HandlerFunc func([]byte) error
+
 type Consumer struct {
-    reader  *kafka.Reader
-    timeout time.Duration
+	reader  *kafka.Reader
+	timeout time.Duration
+	ctx     context.Context
+	cancel  context.CancelFunc
+	handler HandlerFunc
 }
 
-func NewConsumer(brokers []string, topic string, groupID string, timeout time.Duration) *Consumer {
-    return &Consumer{
-        reader: kafka.NewReader(kafka.ReaderConfig{
-            Brokers:  brokers,
-            Topic:    topic,
-            GroupID:  groupID,
-            MinBytes: 10e3,  // 10KB
-            MaxBytes: 10e6,  // 10MB
-        }),
-        timeout: timeout,
-    }
+func NewConsumer(brokers []string, topic string, groupID string, timeout time.Duration, handler HandlerFunc) *Consumer {
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:  brokers,
+		Topic:    topic,
+		GroupID:  groupID,
+		MinBytes: 10e3,
+		MaxBytes: 10e6,
+	})
+
+	consumer := &Consumer{
+		reader:  reader,
+		timeout: timeout,
+		ctx:     ctx,
+		cancel:  cancel,
+		handler: handler,
+	}
+
+	go consumer.start()
+
+	return consumer
 }
 
-func (k *Consumer) ReadMessage() ([]byte, error) {
-    ctx, cancel := context.WithTimeout(context.Background(), k.timeout)
-    defer cancel()
+func (c *Consumer) start() {
+	for {
+		select {
+		case <-c.ctx.Done():
+			log.Info().Str("topic", c.reader.Config().Topic).Msg("Consumer shutting down")
+			return
+		default:
+			msg, err := c.reader.ReadMessage(c.ctx)
+			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					log.Info().Str("topic", c.reader.Config().Topic).Msg("Consumer context canceled")
+					return
+				}
+				log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Failed to read message from Kafka")
+				time.Sleep(1 * time.Second)
+				continue
+			}
 
-    msg, err := k.reader.ReadMessage(ctx)
-    if err != nil {
-        if errors.Is(err, context.DeadlineExceeded) {
-            log.Debug().Msg("No new messages in Kafka topic.")
-        } else {
-            log.Error().Err(err).Msg("Failed to read message from Kafka")
-        }
-        return nil, err
-    }
-
-    return msg.Value, nil
+			if err := c.handler(msg.Value); err != nil {
+				log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Handler failed to process message")
+			}
+		}
+	}
 }
 
 func (c *Consumer) Close() error {
+	c.cancel()
 	return c.reader.Close()
 }

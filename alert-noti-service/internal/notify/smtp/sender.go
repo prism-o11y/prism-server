@@ -9,19 +9,14 @@ import (
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/models"
 )
 
-type Provider struct {
+type EmailSender struct {
 	dialer      *gomail.Dialer
 	tmplManager *TemplateManager
 	messagePool *sync.Pool
 }
 
-func NewProvider(cfg *conf.Smtp) (*Provider, error) {
-	tmplManager, err := NewTemplateManager()
-	if err != nil {
-		return nil, err
-	}
-
-	return &Provider{
+func NewEmailSender(cfg *conf.Smtp, tmplManager *TemplateManager) (*EmailSender, error) {
+	return &EmailSender{
 		dialer:      gomail.NewDialer(cfg.Host, cfg.Port, cfg.Email, cfg.Password),
 		tmplManager: tmplManager,
 		messagePool: &sync.Pool{
@@ -32,7 +27,7 @@ func NewProvider(cfg *conf.Smtp) (*Provider, error) {
 	}, nil
 }
 
-func (p *Provider) SendMail(data *models.NotifyRequest) error {
+func (p *EmailSender) SendMail(data *models.NotifyRequest) error {
 	m := p.messagePool.Get().(*gomail.Message)
 	defer func() {
 		m.Reset()

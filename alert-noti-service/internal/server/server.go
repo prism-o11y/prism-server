@@ -8,37 +8,28 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog/log"
 
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/conf"
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/depends"
-	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify"
 	"github.com/prism-o11y/prism-server/alert-noti-service/pkg/server"
 )
 
 type Server struct {
-	emailHandler *notify.Handler
-	router       *chi.Mux
-	server       *http.Server
+	config *conf.Config
+	router *chi.Mux
+	server *http.Server
 }
 
 func New(deps *depends.Dependencies) (*Server, error) {
-	consumer, err := deps.ConsManager.GetConsumer("notify-topic")
-	if err != nil {
-		return nil, err
-	}
-
-	handler := notify.NewHandler(deps.SMTPProvider, consumer)
 	router := chi.NewRouter()
-
 	s := &Server{
-		emailHandler: handler,
-		router:       router,
+		config: deps.Config,
+		router: router,
 		server: &http.Server{
 			Addr:    deps.Config.Server.Address,
 			Handler: router,
 		},
 	}
-
 	s.routes()
-
 	return s, nil
 }
 
@@ -46,8 +37,12 @@ func (s *Server) routes() {
 	s.router.Get("/health", server.HealthCheckHandler)
 }
 
+func (s *Server) AddAllConsumers() {
+	
+}
+
 func (s *Server) Start(ctx context.Context) {
-	go s.emailHandler.Start(ctx)
+
 
 	log.Info().Msg("Starting HTTP server")
 	if err := s.server.ListenAndServe(); err != http.ErrServerClosed {

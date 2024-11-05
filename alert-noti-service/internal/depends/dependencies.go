@@ -1,8 +1,6 @@
 package depends
 
 import (
-	"time"
-
 	"github.com/prism-o11y/prism-server/shared/data/kafka"
 
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/conf"
@@ -10,9 +8,9 @@ import (
 )
 
 type Dependencies struct {
-	Config       *conf.Config
-	SMTPProvider *smtp.Provider
-	ConsManager  *kafka.ConsumerManager
+	Config          *conf.Config
+	SMTPEmailSender *smtp.EmailSender
+	ConsManager     *kafka.ConsumerManager
 }
 
 func New() (*Dependencies, error) {
@@ -21,21 +19,21 @@ func New() (*Dependencies, error) {
 		return nil, err
 	}
 
-	smtpProvider, err := smtp.NewProvider(conf.Smtp)
+	tmplManager, err := smtp.NewTemplateManager()
 	if err != nil {
 		return nil, err
 	}
 
-	consManager := kafka.NewConsumerManager(
-		[]string{conf.Databases.KafkaAddress},
-		conf.Databases.Topics,
-		conf.Databases.ConsumerGroups,
-		time.Duration(5)*time.Second,
-	)
+	smtpEmailSender, err := smtp.NewEmailSender(conf.Smtp, tmplManager)
+	if err != nil {
+		return nil, err
+	}
+
+	consManager := kafka.NewConsumerManager()
 
 	return &Dependencies{
-		Config:       conf,
-		SMTPProvider: smtpProvider,
-		ConsManager:  consManager,
+		Config:          conf,
+		SMTPEmailSender: smtpEmailSender,
+		ConsManager:     consManager,
 	}, nil
 }

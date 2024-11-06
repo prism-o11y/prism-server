@@ -11,7 +11,7 @@ services:
       - db
       - kafka
 
-  alert-noti-service:
+  alert-noti-service-1:
     build: 
       context: .
       dockerfile: alert-noti-service/Dockerfile
@@ -21,6 +21,19 @@ services:
       - SERVER_NODE=1
     ports:
       - "8001:8001"
+    depends_on:
+      - kafka
+
+  alert-noti-service-2:
+    build: 
+      context: .
+      dockerfile: alert-noti-service/Dockerfile
+    env_file:
+      - assets/env/.env
+    environment:
+      - SERVER_NODE=2
+    ports:
+      - "8002:8002"
     depends_on:
       - kafka
 

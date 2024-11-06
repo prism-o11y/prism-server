@@ -15,7 +15,7 @@ services:
     environment:
       - CONSUL_HTTP_ADDR=consul:8500
 
-  alert-noti-service:
+  alert-noti-service-1:
     build: 
       context: .
       dockerfile: alert-noti-service/Dockerfile
@@ -46,6 +46,19 @@ services:
     command: agent -server -bootstrap -ui -client=0.0.0.0
     ports:
       - "8500:8500"
+
+  alert-noti-service-2:
+    build: 
+      context: .
+      dockerfile: alert-noti-service/Dockerfile
+    env_file:
+      - assets/env/.env
+    environment:
+      - SERVER_NODE=2
+    ports:
+      - "8002:8002"
+    depends_on:
+      - kafka
 
   db:
     image: postgres:16  

@@ -24,10 +24,6 @@ func NewHandler(emailSender *smtp.EmailSender, manager *kafka.ConsumerManager) *
 }
 
 func (h *Handler) Start(ctx context.Context, brokers []string, topics []string, groupIDs []string, timeout time.Duration) {
-	if len(topics) != len(groupIDs) {
-		log.Fatal().Msg("The number of topics and groupIDs must match")
-	}
-
 	for i, topic := range topics {
 		err := h.manager.AddConsumer(
 			brokers,

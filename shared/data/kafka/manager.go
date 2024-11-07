@@ -50,6 +50,8 @@ func (m *ConsumerManager) CloseAllConsumers() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	log.Info().Msg("Closing all Kafka consumers")
+
 	for topic, consumer := range m.cMap {
 		if err := consumer.Close(); err != nil {
 			log.Error().Err(err).Str("topic", topic).Msg("Error closing Kafka consumer")
@@ -58,4 +60,6 @@ func (m *ConsumerManager) CloseAllConsumers() {
 		}
 		delete(m.cMap, topic)
 	}
+
+	log.Info().Msg("All Kafka consumers closed successfully")
 }

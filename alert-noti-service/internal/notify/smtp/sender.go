@@ -11,15 +11,20 @@ import (
 
 type EmailSender struct {
 	dialer      *gomail.Dialer
-	tmplManager *TemplateManager
-	messagePool *sync.Pool
+	tmplManager *templateManager
+	msgPool     *sync.Pool
 }
 
-func NewEmailSender(cfg *conf.Smtp, tmplManager *TemplateManager) (*EmailSender, error) {
+func NewEmailSender(cfg *conf.Smtp) (*EmailSender, error) {
+	tmplManager, err := newTemplateManager()
+	if err != nil {
+		return nil, err
+	}
+
 	return &EmailSender{
 		dialer:      gomail.NewDialer(cfg.Host, cfg.Port, cfg.Email, cfg.Password),
 		tmplManager: tmplManager,
-		messagePool: &sync.Pool{
+		msgPool: &sync.Pool{
 			New: func() interface{} {
 				return gomail.NewMessage()
 			},
@@ -27,11 +32,11 @@ func NewEmailSender(cfg *conf.Smtp, tmplManager *TemplateManager) (*EmailSender,
 	}, nil
 }
 
-func (p *EmailSender) SendMail(data *models.NotifyRequest) error {
-	m := p.messagePool.Get().(*gomail.Message)
+func (p *EmailSender) SendEmail(data *models.NotifyRequest) error {
+	m := p.msgPool.Get().(*gomail.Message)
 	defer func() {
 		m.Reset()
-		p.messagePool.Put(m)
+		p.msgPool.Put(m)
 	}()
 
 	m.SetHeader("From", p.dialer.Username)

@@ -9,23 +9,26 @@ import (
 
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/models"
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/smtp"
+	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/sse"
 )
 
 type Handler struct {
+	eventSender *sse.EventSender
 	emailSender *smtp.EmailSender
-	manager     *kafka.ConsumerManager
+	consManager *kafka.ConsumerManager
 }
 
-func NewHandler(emailSender *smtp.EmailSender, manager *kafka.ConsumerManager) *Handler {
+func NewHandler(eventSender *sse.EventSender, emailSender *smtp.EmailSender, consManager *kafka.ConsumerManager) *Handler {
 	return &Handler{
+		eventSender: eventSender,
 		emailSender: emailSender,
-		manager:     manager,
+		consManager: consManager,
 	}
 }
 
-func (h *Handler) Start(ctx context.Context, brokers []string, topics []string, groupIDs []string, timeout time.Duration) {
+func (h *Handler) StartConsumers(ctx context.Context, brokers []string, topics []string, groupIDs []string, timeout time.Duration) {
 	for i, topic := range topics {
-		err := h.manager.AddConsumer(
+		err := h.consManager.AddConsumer(
 			brokers,
 			topic,
 			groupIDs[i],
@@ -50,15 +53,15 @@ func (h *Handler) processMessage(msg []byte) error {
 		return err
 	}
 
-	retryAttempts := 3
-	backoff := time.Second * 2
-	for i := 0; i < retryAttempts; i++ {
-		if err := h.emailSender.SendMail(request); err != nil {
-			log.Warn().Err(err).Msgf("Retrying to send email (%d/%d)", i+1, retryAttempts)
+	retries, backoff := 3, time.Second*2
+	for i := 0; i < retries; i++ {
+		if err := h.emailSender.SendEmail(request); err != nil {
+			log.Warn().Err(err).Msgf("Retrying to send email (%d/%d)", i+1, retries)
 			time.Sleep(backoff)
 			backoff *= 2
 			continue
 		}
+
 		log.Info().Str("recipient", request.Recipient).Msg("Email sent successfully")
 		return nil
 	}

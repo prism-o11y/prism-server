@@ -11,29 +11,27 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/depends"
-	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify"
 	"github.com/prism-o11y/prism-server/alert-noti-service/pkg/server"
 )
 
 type Server struct {
-	notifyHandler *notify.Handler
-	deps          *depends.Dependencies
-	router        *chi.Mux
-	server        *http.Server
+	deps   *depends.Dependencies
+	router *chi.Mux
+	server *http.Server
 }
 
 func New(deps *depends.Dependencies) (*Server, error) {
-	address, err := buildAddress(deps.Config.Server.Address, deps.Config.Server.NodeID, deps.Config.Server.NodeCount)
+	svrCfg := deps.Config.Server
+	address, err := buildAddress(svrCfg.Address, svrCfg.NodeID, svrCfg.NodeCount)
 	if err != nil {
 		return nil, err
 	}
 
 	router := chi.NewRouter()
 	s := &Server{
-		deps:          deps,
-		router:        router,
-		server:        &http.Server{Addr: address, Handler: router},
-		notifyHandler: notify.NewHandler(deps.SMTPEmailSender, deps.ConsManager),
+		deps:   deps,
+		router: router,
+		server: &http.Server{Addr: address, Handler: router},
 	}
 	s.routes()
 	return s, nil
@@ -64,7 +62,7 @@ func (s *Server) Start(ctx context.Context) {
 	topics := []string{"notify-topic", "transfer-topic"}
 	groups := []string{"notify-group", "transfer-group"}
 	timeOut := 10 * time.Second
-	go s.notifyHandler.Start(ctx, brokers, topics, groups, timeOut)
+	go s.deps.NotifyHandler.StartConsumers(ctx, brokers, topics, groups, timeOut)
 
 	log.Info().Str("address", s.server.Addr).Msgf("Starting HTTP server.")
 	if err := s.server.ListenAndServe(); err != http.ErrServerClosed {
@@ -73,18 +71,13 @@ func (s *Server) Start(ctx context.Context) {
 }
 
 func (s *Server) Stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := s.server.Shutdown(ctx); err != nil {
 		log.Error().Err(err).Msg("Error shutting down HTTP server")
 		return err
 	}
-
-	log.Info().Msg("Closing all Kafka consumers")
-	s.deps.ConsManager.CloseAllConsumers()
-
-	log.Info().Msg("All consumers closed successfully")
-
+	s.deps.Close(ctx)
 	return nil
 }

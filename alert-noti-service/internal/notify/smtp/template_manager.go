@@ -9,18 +9,18 @@ import (
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/smtp/templates"
 )
 
-type TemplateManager struct {
-	templatePool *sync.Pool
+type templateManager struct {
+	tmplPool *sync.Pool
 }
 
-func NewTemplateManager() (*TemplateManager, error) {
+func newTemplateManager() (*templateManager, error) {
 	tmpl, err := template.New("alert").Parse(templates.AlertTemplate)
 	if err != nil {
 		return nil, err
 	}
 
-	return &TemplateManager{
-		templatePool: &sync.Pool{
+	return &templateManager{
+		tmplPool: &sync.Pool{
 			New: func() interface{} {
 				return tmpl
 			},
@@ -28,12 +28,12 @@ func NewTemplateManager() (*TemplateManager, error) {
 	}, nil
 }
 
-func (m *TemplateManager) GenerateNotifyBody(data *models.NotifyRequest) (string, error) {
-	tmpl := m.templatePool.Get().(*template.Template)
-	defer m.templatePool.Put(tmpl)
+func (m *templateManager) GenerateNotifyBody(data *models.NotifyRequest) (string, error) {
+	tmpl := m.tmplPool.Get().(*template.Template)
+	defer m.tmplPool.Put(tmpl)
 
-	var buffer bytes.Buffer
-	if err := tmpl.Execute(&buffer, data); err != nil {
+	buffer := &bytes.Buffer{}
+	if err := tmpl.Execute(buffer, data); err != nil {
 		return "", err
 	}
 

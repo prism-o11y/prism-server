@@ -1,0 +1,57 @@
+from typing import Optional
+from asyncpg import Connection
+from fastapi import Depends
+from src.svc.user.models import User
+from src.database.postgres import PostgresManager, get_db_connection
+from asyncpg import Connection
+class UserRepository:
+
+    def __init__(self, connection) -> None:
+
+        self.connection = connection
+
+    async def create_user(self, user:User)-> Optional[str]:
+
+        async with self.connection.transaction():
+
+            insert_query = '''
+                            INSERT INTO users (user_id, email, status_id, created_at, updated_at)
+                            VALUES ($1, $2, $3, $4, $5)
+                            ON CONFLICT (email) DO NOTHING
+                            RETURNING user_id;
+                            '''
+
+            query_result = await self.connection.fetchval(
+                insert_query,
+                user.id,
+                user.email,
+                user.status_id,
+                user.created_at,
+                user.updated_at,
+            )
+
+            return query_result
+
+    async def get_user(self, user_id):
+
+        pass
+
+    async def get_user_by_email(self, email):
+
+        pass
+
+    async def update_user(self, user):
+
+        pass
+
+    async def delete_user(self, user_id):
+
+        pass
+
+    async def get_users(self):
+
+        pass
+
+async def get_user_repository(connection:Connection = Depends(get_db_connection)) -> UserRepository:
+
+    return UserRepository(connection)

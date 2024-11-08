@@ -2,7 +2,9 @@ from enum import StrEnum
 from pydantic import BaseModel, EmailStr
 from uuid import UUID
 from typing import Optional
-import json
+import json, logging
+from ..config.base_config import BaseConfig
+
 
 class SourceType(StrEnum):
     ALERT_NOTI_SERVICE = "alert-noti-service"
@@ -22,37 +24,32 @@ class EventData(BaseModel):
             return cls(**data_dict)
         
         except json.JSONDecodeError as e:
-            print(f"Failed to decode JSON: {e}")
+            logging.exception(f"Failed to decode JSON: {e}")
             return None
         
         except ValueError as e:
-            print(f"Error in data validation: {e}")
+            logging.exception(f"Error in data validation: {e}")
             return None
 
-class KafkaData(BaseModel):
+class UserData(BaseModel):
     action: str
     user_data: dict
 
     @classmethod
-    def decode_data(cls, data: bytes) -> "KafkaData":
+    def decode_data(cls, data: bytes) -> "UserData":
         try:
             kafka_data_dict = json.loads(data.decode("utf-8"))
-            return KafkaData(**kafka_data_dict)
+            return UserData(**kafka_data_dict)
         
         except json.JSONDecodeError as e:
-            print(f"Failed to decode KafkaData JSON: {e}")
+            logging.exception(f"Failed to decode KafkaData JSON: {e}")
             return None
         
         except ValueError as e:
-            print(f"Error in KafkaData validation: {e}")
+            logging.exception(f"Error in KafkaData validation: {e}")
             return None
 
 class Action(StrEnum):
     INSERT_USER = "insert_user"
     UPDATE_USER = "update_user"
     DELETE_USER = "delete_user"
-
-class Topic(StrEnum):
-    USER = "user-topic"
-    ALERT = "alert-topic"
-    LOG = "log-topic"

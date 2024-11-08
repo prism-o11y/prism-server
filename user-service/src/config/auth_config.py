@@ -12,3 +12,4 @@ class Auth0Config(BaseModel):
     AUTH0_AUDIENCE:str = f"https://{AUTH0_DOMAIN}/api/v2/"
     AUTH0_MANAGEMENT_API_URL:str = f"https://{AUTH0_DOMAIN}/api/v2/users"
     AUTH0_JWKS_URL:str = f"https://{AUTH0_DOMAIN}/.well-known/jwks.json"
+

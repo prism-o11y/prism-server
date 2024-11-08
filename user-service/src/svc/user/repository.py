@@ -23,7 +23,7 @@ class UserRepository:
 
             query_result = await self.connection.fetchval(
                 insert_query,
-                str(user.id),
+                user.id,
                 user.email,
                 user.status_id,
                 user.created_at,

@@ -1,4 +1,4 @@
-import logging, os
+import logging, os, asyncio
 from typing import AsyncGenerator, Awaitable, Callable
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi import FastAPI, Request, Response
@@ -8,10 +8,9 @@ from src.api.v1.entry import new_v1_router
 from src.config.base_config import BaseConfig
 from src.database.postgres import PostgresManager
 from src.svc.auth.service import Auth0Manager
-from src.kafka.kafka_consumer import ConsumerManager
-from src.kafka.kafka_producer import ProducerManager
-
-
+from src.kafka.producer import KafkaProducerService
+from src.kafka.consumer import KafkaConsumerService
+from src.svc.user.service import UserService
 
 class RestServer:
     def __init__(self, config: BaseConfig) -> None:
@@ -57,28 +56,33 @@ class RestServer:
 
     @asynccontextmanager
     async def lifespan_context(self, app: FastAPI) -> AsyncGenerator[None, None]:
+        
         postgres_manager: PostgresManager = app.state.postgres_manager
         await postgres_manager.connect()
 
-        kafka_consumer_manager = ConsumerManager(
-            self.config.KAFKA.BROKER,
-            self.config.KAFKA.TOPIC,
-            self.config.KAFKA.GROUP_ID
+        asyncio.sleep(10)
+        kafka_producer: KafkaProducerService = KafkaProducerService(self.config.KAFKA)
+        app.state.kafka_producer = kafka_producer
+        await kafka_producer.start()
+
+        user_svc: UserService = UserService(
+            postgres_manager,
+            kafka_producer,
         )
 
-        kafka_producer_manager = ProducerManager(self.config.KAFKA.BROKER)
-        app.state.consumer_manager = kafka_consumer_manager
-        app.state.producer_manager = kafka_producer_manager
-        
-        await kafka_consumer_manager.init_kafka_consumer()
-        await kafka_producer_manager.init_producer()
+        kafka_consumer: KafkaConsumerService = KafkaConsumerService(
+            self.config.KAFKA,
+            user_svc,
+        )
+        app.state.kafka_consumer = kafka_consumer
+        await kafka_consumer.start_user_consumer()
 
         try:        
             yield
 
         finally:
-            await kafka_consumer_manager.stop_kafka_consumers()
-            await kafka_producer_manager.stop_producer()
+            await kafka_consumer.stop_user_consumer()
+            await kafka_producer.stop()
             await postgres_manager.disconnect()
 
 

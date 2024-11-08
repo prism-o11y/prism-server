@@ -1,21 +1,22 @@
 from src.svc.user.repository import get_user_repository, UserRepository
+from ...kafka.producer import KafkaProducerService, get_kafka_producer_service
 from ...kafka import model
 from fastapi import Depends
+from ...database.postgres import get_postgres_manager, PostgresManager
 from .models import User, STATUS
 import datetime as dt, uuid, logging
-from ...kafka.kafka_producer import ProducerManager, get_producer_manager
-from ...kafka.kafka_producer_service import get_producer_service, KafkaProducerService
-
+from ...config.base_config import get_base_config, BaseConfig
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 class UserService:
 
-    def __init__(self, userRepo: UserRepository, producer_manager:ProducerManager, kafka_producer_service: KafkaProducerService):
-        
-        self.userRepo = userRepo
-        self.producer_manager = producer_manager
-        self.kafka_producer_service = kafka_producer_service
+    def __init__(self, postgres_manager: PostgresManager, kafka_producer: KafkaProducerService):
+        self.kafka_producer = kafka_producer
+        self.postgres_manager = postgres_manager
+        self.base_config: BaseConfig = get_base_config()
 
-    async def create_user(self, email: str):
+
+    async def produce_new_user(self, email: str):
 
         user = User(
             id = uuid.uuid4(),
@@ -27,7 +28,7 @@ class UserService:
             last_login = None
         )
 
-        data = model.KafkaData(
+        data = model.UserData(
             action = model.Action.INSERT_USER, 
             user_data = user.model_dump(),
         ).model_dump_json().encode('utf-8')
@@ -39,33 +40,37 @@ class UserService:
             user_id = user.id
         )
 
-        await self.kafka_producer_service.send_message(model.Topic.USER, message)
-
-    
-    async def register_user_kafka(self, data: dict):
-
         try:
-            user = User(**data)
-            query_result = await self.userRepo.create_user(user)
+            await self.kafka_producer.enqueue_message(
+                topic = self.base_config.KAFKA.TOPICS.get("user"),
+                key = str(user.id),
+                value = message.model_dump_json().encode('utf-8')
+            )     
 
-            if query_result:
-                logging.info(f"User created: {user.email}")
-
-            else:
-                logging.info(f"User already exists: {user.email}, user logged in.")
+            logging.info({"event": "Produce-Message", "user": user.email, "status": "Produced"})
 
         except Exception as e:
-            logging.exception(f"Failed to register user: {e}")
-            
-    
-    async def get_login_dates(self, user_id: str, access_token: str):
+            logging.error({"event": "Produce-Message", "user": user.email, "status": "Failed"})
 
-        pass
+    @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
+    async def insert_user(self, user: User):
+        async with self.postgres_manager.get_connection() as connection:
+            user_repo = UserRepository(connection)
+            result = await user_repo.create_user(user)
+
+            if result:
+                logging.info({"event": "User-Login", "user": user.email ,"status": "Signup-success"})
+
+            else:
+                
+                logging.info({"event": "User-Login", "user": user.email ,"status": "Login-success"})
+
+    
+
 
 async def get_user_service(
-        userRepo: UserRepository = Depends(get_user_repository), 
-        producer_manager:ProducerManager = Depends(get_producer_manager),
-        kafka_producer_service: KafkaProducerService = Depends(get_producer_service)
+        postgres_manager = Depends(get_postgres_manager),
+        kafka_producer: KafkaProducerService = Depends(get_kafka_producer_service)
     ) -> UserService:
     
-    return UserService(userRepo, producer_manager, kafka_producer_service)
+    return UserService(postgres_manager,kafka_producer)

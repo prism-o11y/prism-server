@@ -16,17 +16,9 @@ class UserService:
         self.base_config: BaseConfig = get_base_config()
 
 
-    async def produce_new_user(self, email: str):
+    async def produce_new_user(self, user: User):
 
-        user = User(
-            id = uuid.uuid4(),
-            org_id = None,
-            email = email,
-            status_id = STATUS.ACTIVE.value,
-            created_at = dt.datetime.now(),
-            updated_at = dt.datetime.now(),
-            last_login = None
-        )
+
 
         data = model.UserData(
             action = model.Action.INSERT_USER, 
@@ -52,6 +44,22 @@ class UserService:
         except Exception as e:
             logging.error({"event": "Produce-Message", "user": user.email, "status": "Failed"})
 
+    def generate_user(self, email:str) -> User:
+
+        user = User(
+            id = uuid.uuid4(),
+            org_id = None,
+            email = email,
+            status_id = STATUS.ACTIVE.value,
+            created_at = dt.datetime.now(),
+            updated_at = dt.datetime.now(),
+            last_login = None
+        )
+
+        return user
+
+
+
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
     async def insert_user(self, user: User):
         async with self.postgres_manager.get_connection() as connection:
@@ -62,7 +70,6 @@ class UserService:
                 logging.info({"event": "User-Login", "user": user.email ,"status": "Signup-success"})
 
             else:
-                
                 logging.info({"event": "User-Login", "user": user.email ,"status": "Login-success"})
 
     

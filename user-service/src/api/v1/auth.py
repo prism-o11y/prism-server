@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.exceptions import HTTPException
-from src.svc.auth.service import get_auth0_manager
-from src.svc.auth.service import Auth0Manager
-from src.svc.user.service import UserService
+from ...svc.auth.service import get_auth0_manager
+from ...jwt.service import get_jwt_manager, JWTManager
+from ...svc.auth.service import Auth0Manager
+from ...svc.user.service import UserService
 from fastapi.responses import RedirectResponse, JSONResponse
 from authlib.integrations.starlette_client import OAuthError
 import logging
-from src.svc.user.service import get_user_service
+from ...svc.user.service import get_user_service
 from ...svc.user.models import User
 _router = APIRouter(prefix="/auth")
 
@@ -18,7 +19,11 @@ async def login(request: Request, auth0Manager = Depends(get_auth0_manager)):
     )
 
 @_router.get("/callback", name="auth:callback")
-async def callback(request: Request, auth0_manager:Auth0Manager = Depends(get_auth0_manager), user_svc:UserService = Depends(get_user_service)):
+async def callback(request: Request, 
+                    auth0_manager:Auth0Manager = Depends(get_auth0_manager), 
+                    user_svc:UserService = Depends(get_user_service),
+                    jwt_manager:JWTManager = Depends(get_jwt_manager)
+    ):
 
     try:
         token = await auth0_manager.oauth.auth0.authorize_access_token(request)
@@ -32,11 +37,11 @@ async def callback(request: Request, auth0_manager:Auth0Manager = Depends(get_au
         if not email:
             raise HTTPException(status_code=400, detail="Email not found in token")
         
-        user:User = user_svc.generate_user(email) 
+        user:User = user_svc.generate_user(email)
 
         await user_svc.produce_new_user(user)
 
-        return JSONResponse(status_code=201, content={"detail": "Processing User Registration"})
+        return JSONResponse(status_code=201, content={"detail":"processing user login"})
 
     except HTTPException as e:
         logging.error(f"Auth error: {e.detail}")

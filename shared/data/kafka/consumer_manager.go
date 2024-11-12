@@ -19,7 +19,7 @@ func NewConsumerManager() *ConsumerManager {
 	}
 }
 
-func (m *ConsumerManager) AddConsumer(brokers []string, topic string, groupID string, timeout time.Duration, handler HandlerFunc) error {
+func (m *ConsumerManager) AddConsumer(brokers []string, topic string, groupID string, partition int, timeout time.Duration, handler HandlerFunc) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -28,7 +28,7 @@ func (m *ConsumerManager) AddConsumer(brokers []string, topic string, groupID st
 		return fmt.Errorf("consumer already exists for topic %s", topic)
 	}
 
-	consumer := NewConsumer(brokers, topic, groupID, timeout, handler)
+	consumer := NewConsumer(brokers, topic, groupID, partition, timeout, handler)
 	m.cMap[topic] = consumer
 	log.Info().Str("topic", topic).Msg("New Kafka consumer added")
 	return nil

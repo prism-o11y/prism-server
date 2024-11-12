@@ -26,12 +26,13 @@ func NewHandler(eventSender *sse.EventSender, emailSender *smtp.EmailSender, con
 	}
 }
 
-func (h *Handler) StartConsumers(ctx context.Context, brokers []string, topics []string, groupIDs []string, timeout time.Duration) {
+func (h *Handler) StartConsumers(ctx context.Context, brokers []string, topics []string, groupIDs []string, partition int, timeout time.Duration) {
 	for i, topic := range topics {
 		err := h.consManager.AddConsumer(
 			brokers,
 			topic,
 			groupIDs[i],
+			partition,
 			timeout,
 			func(msg []byte) error {
 				return h.processMessage(msg)

@@ -37,7 +37,7 @@ func New(deps *depends.Dependencies) (*Server, error) {
 	return s, nil
 }
 
-func buildAddress(address string, nodeID string, nodeCount int) (string, error) {
+func buildAddress(address string, nodeID int, nodeCount int) (string, error) {
 	parts := strings.Split(address, ":")
 	if len(parts) < 2 {
 		return "", fmt.Errorf("invalid server address format: %s", address)
@@ -45,7 +45,7 @@ func buildAddress(address string, nodeID string, nodeCount int) (string, error) 
 
 	host, port := parts[0], parts[1]
 	if nodeCount > 1 {
-		nodePort := fmt.Sprintf("%s%s", port[:len(port)-1], nodeID)
+		nodePort := fmt.Sprintf("%s%d", port[:len(port)-1], nodeID+1)
 		return fmt.Sprintf("%s:%s", host, nodePort), nil
 	}
 
@@ -62,7 +62,7 @@ func (s *Server) Start(ctx context.Context) {
 	topics := []string{"notify-topic", "transfer-topic"}
 	groups := []string{"notify-group", "transfer-group"}
 	timeOut := 10 * time.Second
-	go s.deps.NotifyHandler.StartConsumers(ctx, brokers, topics, groups, timeOut)
+	go s.deps.NotifyHandler.StartConsumers(ctx, brokers, topics, groups, s.deps.Config.Server.NodeID, timeOut)
 
 	log.Info().Str("address", s.server.Addr).Msgf("Starting HTTP server.")
 	if err := s.server.ListenAndServe(); err != http.ErrServerClosed {

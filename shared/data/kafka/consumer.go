@@ -19,12 +19,12 @@ type Consumer struct {
 	handler HandlerFunc
 }
 
-func NewConsumer(brokers []string, topic string, groupID string, timeout time.Duration, handler HandlerFunc) *Consumer {
+func NewConsumer(brokers []string, topic string, groupID string, partition int, timeout time.Duration, handler HandlerFunc) *Consumer {
 	ctx, cancel := context.WithCancel(context.Background())
 	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  brokers,
 		Topic:    topic,
-		GroupID:  groupID,
+		Partition: partition,
 		MinBytes: 10e3,
 		MaxBytes: 10e6,
 	})

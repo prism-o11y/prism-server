@@ -9,16 +9,18 @@ import (
 )
 
 type Producer struct {
-	writer *kafka.Writer
+	writer    *kafka.Writer
+	partition int
 }
 
-func NewProducer(brokers []string, topic string) *Producer {
+func NewProducer(brokers []string, topic string, partition int) *Producer {
 	return &Producer{
 		writer: &kafka.Writer{
 			Addr:     kafka.TCP(brokers...),
 			Topic:    topic,
 			Balancer: &kafka.Hash{},
 		},
+		partition: partition,
 	}
 }
 

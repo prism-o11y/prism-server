@@ -19,14 +19,14 @@ func NewProducerManager() *ProducerManager {
 	}
 }
 
-func (m *ProducerManager) AddProducer(brokers []string, topic string) *Producer {
+func (m *ProducerManager) AddProducer(brokers []string, topic string, partition int) *Producer {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if producer, exists := m.producers[topic]; exists {
 		return producer
 	}
-	producer := NewProducer(brokers, topic)
+	producer := NewProducer(brokers, topic, partition)
 	m.producers[topic] = producer
 	return producer
 }

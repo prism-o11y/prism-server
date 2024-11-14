@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -44,8 +45,15 @@ func buildAddress(address string, nodeID int, nodeCount int) (string, error) {
 	}
 
 	host, port := parts[0], parts[1]
+
+	intPort, err := strconv.Atoi(port)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to parse port '%s'", port)
+		return "", err
+	}
+
 	if nodeCount > 1 {
-		nodePort := fmt.Sprintf("%s%d", port[:len(port)-1], nodeID+1)
+		nodePort := fmt.Sprintf("%d", intPort+nodeID)
 		return fmt.Sprintf("%s:%s", host, nodePort), nil
 	}
 
@@ -62,7 +70,8 @@ func (s *Server) Start(ctx context.Context) {
 	topics := []string{"notify-topic", "transfer-topic"}
 	groups := []string{"notify-group", "transfer-group"}
 	timeOut := 10 * time.Second
-	go s.deps.NotifyHandler.StartConsumers(ctx, brokers, topics, groups, s.deps.Config.Server.NodeID, timeOut)
+	nodeID := s.deps.Config.Server.NodeID
+	go s.deps.NotifyHandler.StartConsumers(ctx, brokers, topics, groups, nodeID, timeOut)
 
 	log.Info().Str("address", s.server.Addr).Msgf("Starting HTTP server.")
 	if err := s.server.ListenAndServe(); err != http.ErrServerClosed {

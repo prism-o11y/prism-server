@@ -10,6 +10,7 @@ import (
 type NotifyRequest struct {
 	Recipient string        `json:"recipient"`
 	Severity  AlertSeverity `json:"severity"`
+	Action    Action        `json:"action"`
 	Message   string        `json:"message"`
 	DateTime  time.Time     `json:"dateTime"`
 }
@@ -20,6 +21,13 @@ const (
 	Critical AlertSeverity = "CRITICAL"
 	Warning  AlertSeverity = "WARNING"
 	Info     AlertSeverity = "INFO"
+)
+
+type Action string
+
+const (
+	SSE  Action = "SSE"
+	SMTP Action = "SMTP"
 )
 
 func ParseNotifyRequest(msg []byte) (*NotifyRequest, error) {

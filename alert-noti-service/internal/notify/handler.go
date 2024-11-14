@@ -2,8 +2,10 @@ package notify
 
 import (
 	"context"
+	"net/http"
 	"time"
 
+	"github.com/prism-o11y/prism-server/shared/data"
 	"github.com/prism-o11y/prism-server/shared/data/kafka"
 	"github.com/rs/zerolog/log"
 
@@ -24,6 +26,9 @@ func NewHandler(eventSender *sse.EventSender, emailSender *smtp.EmailSender, con
 		emailSender: emailSender,
 		consManager: consManager,
 	}
+}
+
+func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) StartConsumers(ctx context.Context, brokers []string, topics []string, groupIDs []string, partition int, timeout time.Duration) {
@@ -49,22 +54,32 @@ func (h *Handler) StartConsumers(ctx context.Context, brokers []string, topics [
 }
 
 func (h *Handler) processMessage(msg []byte) error {
-	request, err := models.ParseNotifyRequest(msg)
+	event, err := data.NewEventData(msg)
+	if err != nil {
+		return err
+	}
+
+	request, err := models.ParseNotifyRequest(event.Data)
 	if err != nil {
 		return err
 	}
 
 	retries, backoff := 3, time.Second*2
 	for i := 0; i < retries; i++ {
-		if err := h.emailSender.SendEmail(request); err != nil {
-			log.Warn().Err(err).Msgf("Retrying to send email (%d/%d)", i+1, retries)
-			time.Sleep(backoff)
-			backoff *= 2
-			continue
-		}
+		switch request.Action {
+		case models.SMTP:
+			if err := h.emailSender.SendEmail(request); err != nil {
+				log.Warn().Err(err).Msgf("Retrying to send email (%d/%d)", i+1, retries)
+				time.Sleep(backoff)
+				backoff *= 2
+				continue
+			}
 
-		log.Info().Str("recipient", request.Recipient).Msg("Email sent successfully")
-		return nil
+			log.Info().Str("recipient", request.Recipient).Msg("Email sent successfully")
+			return nil
+		case models.SSE:
+			log.Info().Str("recipient", request.Recipient).Msg("Sending SSE event")
+		}
 	}
 
 	log.Error().Err(err).Str("recipient", request.Recipient).Msg("Failed to send email after retries")

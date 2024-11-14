@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 class User(BaseModel):
 
-    id: uuid.UUID
+    user_id: uuid.UUID
 
     org_id: Optional[uuid.UUID]
 

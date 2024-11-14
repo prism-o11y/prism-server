@@ -18,8 +18,6 @@ class UserService:
 
     async def produce_new_user(self, user: User):
 
-
-
         data = model.UserData(
             action = model.Action.INSERT_USER, 
             user_data = user.model_dump(),
@@ -29,25 +27,25 @@ class UserService:
             source = model.SourceType.USER_SERVICE,
             data = data,
             email = user.email,
-            user_id = user.id
+            user_id = user.user_id
         )
 
         try:
             await self.kafka_producer.enqueue_message(
                 topic = self.base_config.KAFKA.TOPICS.get("user"),
-                key = str(user.id),
+                key = str(user.user_id),
                 value = message.model_dump_json().encode('utf-8')
             )     
 
             logging.info({"event": "Produce-Message", "user": user.email, "status": "Produced"})
 
         except Exception as e:
-            logging.error({"event": "Produce-Message", "user": user.email, "status": "Failed"})
+            logging.error({"event": "Produce-Message", "user": user.email, "status": "Failed", "error": str(e)})
 
     def generate_user(self, email:str) -> User:
 
         user = User(
-            id = uuid.uuid4(),
+            user_id = uuid.uuid4(),
             org_id = None,
             email = email,
             status_id = STATUS.ACTIVE.value,
@@ -72,7 +70,59 @@ class UserService:
             else:
                 logging.info({"event": "User-Login", "user": user.email ,"status": "Login-success"})
 
-    
+    async def get_user_by_id(self, user_id:uuid.UUID):
+
+        async with self.postgres_manager.get_connection() as connection:
+            user_repo = UserRepository(connection)
+            result = await user_repo.get_user_by_id(user_id)
+            if not result:
+                return None
+            
+            else:
+                user = User(**dict(result))
+                return user.model_dump_json()
+        
+    async def get_user_by_email(self, email:str) -> str:
+
+        async with self.postgres_manager.get_connection() as connection:
+            user_repo = UserRepository(connection)
+            result = await user_repo.get_user_by_email(email)
+
+            if not result:
+                return None
+            
+            else:
+                user = User(**dict(result))
+                return user.model_dump_json()
+            
+    async def update_user(self, user:User) -> str:
+
+        async with self.postgres_manager.get_connection() as connection:
+
+            user_repo = UserRepository(connection)
+
+            result = await user_repo.update_user(user)
+
+            if not result:
+                return None
+            
+            else:
+
+                return str(result)
+            
+    async def delete_user(self, user_id:uuid.UUID) -> str:
+
+        async with self.postgres_manager.get_connection() as connection:
+
+            user_repo = UserRepository(connection)
+
+            result = await user_repo.delete_user(user_id)
+
+            if not result:
+                return None
+            
+            else:
+                return str(result)
 
 
 async def get_user_service(

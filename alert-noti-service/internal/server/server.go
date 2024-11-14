@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/prism-o11y/prism-server/shared/data/kafka"
 	"github.com/rs/zerolog/log"
 
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/depends"
@@ -62,16 +63,15 @@ func buildAddress(address string, nodeID int, nodeCount int) (string, error) {
 
 func (s *Server) routes() {
 	s.router.Get("/health", server.HealthCheckHandler)
-	s.router.Post("/event", func(w http.ResponseWriter, r *http.Request) {})
+	s.router.Get("/events", s.deps.NotifyHandler.SSEHandler)
 }
 
 func (s *Server) Start(ctx context.Context) {
 	brokers := []string{s.deps.Config.Databases.KafkaAddress}
-	topics := []string{"notify-topic", "transfer-topic"}
-	groups := []string{"notify-group", "transfer-group"}
+	topics := []string{kafka.NotifyTopic, kafka.TransferTopic}
+	groups := []string{kafka.NotifyGroupID, "temp-group"}
 	timeOut := 10 * time.Second
-	nodeID := s.deps.Config.Server.NodeID
-	go s.deps.NotifyHandler.StartConsumers(ctx, brokers, topics, groups, nodeID, timeOut)
+	go s.deps.NotifyHandler.StartConsumers(ctx, brokers, topics, groups, timeOut)
 
 	log.Info().Str("address", s.server.Addr).Msgf("Starting HTTP server.")
 	if err := s.server.ListenAndServe(); err != http.ErrServerClosed {

@@ -20,17 +20,23 @@ type Consumer struct {
 }
 
 func NewConsumer(brokers []string, topic string, groupID string, partition int, timeout time.Duration, handler HandlerFunc) *Consumer {
-	ctx, cancel := context.WithCancel(context.Background())
-	reader := kafka.NewReader(kafka.ReaderConfig{
+	readerCfg := kafka.ReaderConfig{
 		Brokers:  brokers,
 		Topic:    topic,
-		Partition: partition,
 		MinBytes: 10e3,
 		MaxBytes: 10e6,
-	})
+	}
+
+	if topic == "transfer-topic" {
+		readerCfg.Partition = partition
+	} else {
+		readerCfg.GroupID = groupID
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
 
 	consumer := &Consumer{
-		reader:  reader,
+		reader:  kafka.NewReader(readerCfg),
 		timeout: timeout,
 		ctx:     ctx,
 		cancel:  cancel,

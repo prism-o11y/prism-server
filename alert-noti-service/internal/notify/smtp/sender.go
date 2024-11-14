@@ -1,3 +1,5 @@
+// alert-noti-service/internal/notify/smtp/sender.go
+
 package smtp
 
 import (
@@ -13,6 +15,7 @@ type EmailSender struct {
 	dialer      *gomail.Dialer
 	tmplManager *templateManager
 	msgPool     *sync.Pool
+	Config      *conf.Smtp
 }
 
 func NewEmailSender(cfg *conf.Smtp) (*EmailSender, error) {
@@ -29,10 +32,11 @@ func NewEmailSender(cfg *conf.Smtp) (*EmailSender, error) {
 				return gomail.NewMessage()
 			},
 		},
+		Config: cfg,
 	}, nil
 }
 
-func (p *EmailSender) SendEmail(data *models.NotifyRequest) error {
+func (p *EmailSender) SendEmail(data *models.SMTPNotification) error {
 	m := p.msgPool.Get().(*gomail.Message)
 	defer func() {
 		m.Reset()

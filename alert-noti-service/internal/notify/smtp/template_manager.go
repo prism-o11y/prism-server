@@ -28,7 +28,7 @@ func newTemplateManager() (*templateManager, error) {
 	}, nil
 }
 
-func (m *templateManager) GenerateNotifyBody(data *models.NotifyRequest) (string, error) {
+func (m *templateManager) GenerateNotifyBody(data *models.SMTPNotification) (string, error) {
 	tmpl := m.tmplPool.Get().(*template.Template)
 	defer m.tmplPool.Put(tmpl)
 

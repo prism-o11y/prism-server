@@ -1,3 +1,5 @@
+// alert-noti-service/internal/depends/dependencies.go
+
 package depends
 
 import (
@@ -16,10 +18,11 @@ import (
 )
 
 type Dependencies struct {
-	redisClient   *redis.Client
-	Config        *conf.Config
-	ConsManager   *kafka.ConsumerManager
-	NotifyHandler *notify.Handler
+	redisClient     *redis.Client
+	Config          *conf.Config
+	ConsManager     *kafka.ConsumerManager
+	ProducerManager *kafka.ProducerManager
+	NotifyHandler   *notify.Handler
 }
 
 func New() (*Dependencies, error) {
@@ -39,20 +42,25 @@ func New() (*Dependencies, error) {
 	}
 
 	consManager := kafka.NewConsumerManager()
-	cacheManager := lock.NewDistributedLock(client)
+	producerManager := kafka.NewProducerManager()
+
+	cacheManager := lock.NewDistributedLock(client, lock.DefaultLockTTL)
 	eventSender := sse.NewEventSender(cacheManager)
-	notifyHandler := notify.NewHandler(eventSender, emailSender, consManager)
+	nodeID := cfg.Server.NodeID
+	notifyHandler := notify.NewHandler(eventSender, emailSender, producerManager, consManager, nodeID)
 
 	return &Dependencies{
-		Config:        cfg,
-		redisClient:   client,
-		ConsManager:   consManager,
-		NotifyHandler: notifyHandler,
+		Config:          cfg,
+		redisClient:     client,
+		ConsManager:     consManager,
+		ProducerManager: producerManager,
+		NotifyHandler:   notifyHandler,
 	}, nil
 }
 
 func (d *Dependencies) Close(ctx context.Context) error {
 	d.ConsManager.CloseAllConsumers()
+	d.ProducerManager.CloseAllProducers()
 
 	if err := d.redisClient.Close(); err != nil {
 		log.Error().Err(err).Msg("Failed to close redis client")

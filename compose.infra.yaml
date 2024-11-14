@@ -17,6 +17,7 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: ["redis-server", "--requirepass", "root"]
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest

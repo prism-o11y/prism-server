@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/go-redis/redis v6.15.9+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/rs/zerolog v1.33.0
 )

@@ -52,13 +52,13 @@ func (c *Consumer) start() {
 	for {
 		select {
 		case <-c.ctx.Done():
-			log.Info().Str("topic", c.reader.Config().Topic).Msg("Consumer shutting down")
+			log.Info().Str("topic", c.reader.Config().Topic).Msg("Consumer context canceled")
 			return
 		default:
 			msg, err := c.reader.ReadMessage(c.ctx)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
-					log.Info().Str("topic", c.reader.Config().Topic).Msg("Consumer context canceled")
+					log.Info().Str("topic", c.reader.Config().Topic).Msg("Consumer context canceled during read")
 					return
 				}
 				log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Failed to read message from Kafka")

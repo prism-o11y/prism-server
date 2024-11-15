@@ -28,13 +28,13 @@ type Client struct {
 	once           sync.Once
 }
 
-func NewClient(clientID string, w http.ResponseWriter) (*Client, error) {
+func NewClient(clientID string, w http.ResponseWriter, reqCtx context.Context) (*Client, error) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		return nil, fmt.Errorf("streaming unsupported")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(reqCtx)
 
 	return &Client{
 		ClientID:       clientID,

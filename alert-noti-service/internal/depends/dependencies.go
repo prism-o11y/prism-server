@@ -22,6 +22,7 @@ type Dependencies struct {
 	Config          *conf.Config
 	ConsManager     *kafka.ConsumerManager
 	ProducerManager *kafka.ProducerManager
+	EventSender     *sse.EventSender
 	NotifyHandler   *notify.Handler
 }
 
@@ -54,6 +55,7 @@ func New() (*Dependencies, error) {
 		redisClient:     client,
 		ConsManager:     consManager,
 		ProducerManager: producerManager,
+		EventSender:     eventSender,
 		NotifyHandler:   notifyHandler,
 	}, nil
 }
@@ -61,6 +63,7 @@ func New() (*Dependencies, error) {
 func (d *Dependencies) Close(ctx context.Context) error {
 	d.ConsManager.CloseAllConsumers()
 	d.ProducerManager.CloseAllProducers()
+	d.EventSender.Close()
 
 	if err := d.redisClient.Close(); err != nil {
 		log.Error().Err(err).Msg("Failed to close redis client")

@@ -66,18 +66,22 @@ func (cm *clientManager) AddClient(clientID, nodeID string, client *Client) erro
 	return nil
 }
 
-func (cm *clientManager) HasClient(clientID string, nodeID string) (string, bool) {
+func (cm *clientManager) HasClient(clientID string, nodeID string) (string, bool, error) {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 
 	lockNodeID, err := cm.distLock.GetNodeForClient(clientID)
 	if err != nil {
+		if err == lock.ErrNoLockFound {
+			log.Warn().Str("client_id", clientID).Msg("Client not connected to any node")
+			return "", false, nil
+		}
 		log.Error().Err(err).Str("client_id", clientID).Msg("Failed to get node for client")
-		return "", false
+		return "", false, err
 	}
 
 	_, exists := cm.clients[clientID]
-	return lockNodeID, exists && lockNodeID == nodeID
+	return lockNodeID, exists && lockNodeID == nodeID, nil
 }
 
 func (cm *clientManager) GetClient(clientID string) (*Client, bool) {
@@ -112,4 +116,29 @@ func (cm *clientManager) RemoveClient(clientID string) error {
 
 	log.Info().Str("client_id", clientID).Msg("Client removed successfully")
 	return nil
+}
+
+func (cm *clientManager) DisconnectAllClients() {
+	if len(cm.clients) == 0 {
+		log.Info().Msg("No clients to disconnect")
+		return
+	}
+
+	cm.mu.RLock()
+	clientsCopy := make(map[string]*Client, len(cm.clients))
+	for clientID, client := range cm.clients {
+		clientsCopy[clientID] = client
+	}
+	cm.mu.RUnlock()
+
+	for clientID, client := range clientsCopy {
+		log.Info().Str("client_id", clientID).Msg("Disconnecting client during shutdown")
+		client.Close()
+
+		if err := cm.distLock.Release(clientID); err != nil {
+			log.Error().Err(err).Str("client_id", clientID).Msg("Failed to release lock for client")
+		} else {
+			log.Info().Str("client_id", clientID).Msg("Lock released for client")
+		}
+	}
 }

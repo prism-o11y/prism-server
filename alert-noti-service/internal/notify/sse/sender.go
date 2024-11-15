@@ -30,3 +30,7 @@ func (es *EventSender) SendEventToClient(clientID string, notification *models.S
 	eventType := "alert"
 	return client.SendEvent(eventID, eventType, data)
 }
+
+func (es *EventSender) Close() {
+	es.CliManager.DisconnectAllClients()
+}

@@ -32,5 +32,5 @@ func (es *EventSender) SendEventToClient(clientID string, notification *models.S
 }
 
 func (es *EventSender) Close() {
-	es.CliManager.DisconnectAllClients()
+	es.CliManager.CloseAllClients()
 }

@@ -49,26 +49,36 @@ func NewConsumer(brokers []string, topic string, groupID string, partition int, 
 }
 
 func (c *Consumer) start() {
+	defer func() {
+		log.Info().Str("topic", c.reader.Config().Topic).Msg("Consumer stopped")
+	}()
+
 	for {
+		msg, err := c.reader.FetchMessage(c.ctx)
+		if err != nil {
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				log.Info().Str("topic", c.reader.Config().Topic).Msg("Consumer context canceled or deadline exceeded")
+				return
+			}
+			log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Failed to fetch message from Kafka")
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		if err := c.handler(msg.Value); err != nil {
+			log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Handler failed to process message")
+		}
+
+		if err := c.reader.CommitMessages(c.ctx, msg); err != nil {
+			log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Failed to commit message")
+		}
+
 		select {
 		case <-c.ctx.Done():
 			log.Info().Str("topic", c.reader.Config().Topic).Msg("Consumer context canceled")
 			return
 		default:
-			msg, err := c.reader.ReadMessage(c.ctx)
-			if err != nil {
-				if errors.Is(err, context.Canceled) {
-					log.Info().Str("topic", c.reader.Config().Topic).Msg("Consumer context canceled during read")
-					return
-				}
-				log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Failed to read message from Kafka")
-				time.Sleep(1 * time.Second)
-				continue
-			}
-
-			if err := c.handler(msg.Value); err != nil {
-				log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Handler failed to process message")
-			}
+			continue
 		}
 	}
 }

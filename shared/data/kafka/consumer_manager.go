@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -46,20 +47,30 @@ func (m *ConsumerManager) GetConsumer(topic string) (*Consumer, error) {
 	return consumer, nil
 }
 
-func (m *ConsumerManager) CloseAllConsumers() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (cm *ConsumerManager) CloseAllConsumers(ctx context.Context) {
+	var wg sync.WaitGroup
 
-	log.Info().Msg("Closing all Kafka consumers")
-
-	for topic, consumer := range m.cMap {
-		if err := consumer.Close(); err != nil {
-			log.Error().Err(err).Str("topic", topic).Msg("Error closing Kafka consumer")
-		} else {
-			log.Info().Str("topic", topic).Msg("Kafka consumer closed")
-		}
-		delete(m.cMap, topic)
+	for topic, consumer := range cm.cMap {
+		wg.Add(1)
+		go func(c *Consumer, topic string) {
+			defer wg.Done()
+			log.Info().Msgf("Closing consumer for topic=%s", topic)
+			if err := c.Close(); err != nil {
+				log.Error().Err(err).Msgf("Error closing consumer topic=%s", topic)
+			}
+		}(consumer, topic)
 	}
 
-	log.Info().Msg("All Kafka consumers closed successfully")
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		log.Info().Msg("All consumers closed")
+	case <-ctx.Done():
+		log.Warn().Msg("Timeout waiting for consumers to close")
+	}
 }

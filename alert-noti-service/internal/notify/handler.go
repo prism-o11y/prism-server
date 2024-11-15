@@ -34,6 +34,58 @@ func NewHandler(eventSender *sse.EventSender, emailSender *smtp.EmailSender, pro
 	}
 }
 
+func (h *Handler) StartConsumers(ctx context.Context, brokers []string, topics []string, groupIDs []string, timeout time.Duration) {
+	for i, topic := range topics {
+		err := h.consManager.AddConsumer(
+			brokers,
+			topic,
+			groupIDs[i],
+			h.nodeID,
+			timeout,
+			h.processMessage,
+		)
+		if err != nil {
+			log.Error().Err(err).Str("topic", topic).Msg("Failed to add consumer")
+			continue
+		}
+	}
+	<-ctx.Done()
+}
+
+func (h *Handler) processMessage(msg []byte) error {
+	notification, err := models.ParseNotification(msg)
+	if err != nil {
+		return err
+	}
+
+	switch n := notification.(type) {
+	case *models.SMTPNotification:
+		return h.handleSMTPNotification(n)
+	case *models.SSENotification:
+		return h.handleSSENotification(n)
+	default:
+		return fmt.Errorf("unknown notification type")
+	}
+}
+
+func (h *Handler) handleSMTPNotification(n *models.SMTPNotification) error {
+	retries, backoff := 3, time.Second*2
+	for i := 0; i < retries; i++ {
+		if err := h.emailSender.SendEmail(n); err != nil {
+			log.Warn().Err(err).Msgf("Retrying to send email (%d/%d)", i+1, retries)
+			time.Sleep(backoff)
+			backoff *= 2
+			continue
+		}
+
+		log.Info().Str("recipient", n.Recipient).Msg("Email sent successfully")
+		return nil
+	}
+
+	log.Error().Str("recipient", n.Recipient).Msg("Failed to send email after retries")
+	return fmt.Errorf("failed to send email to %s", n.Recipient)
+}
+
 func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	clientID := r.URL.Query().Get("client_id")
 	nodeIDStr := fmt.Sprintf("%d", h.nodeID)
@@ -78,60 +130,6 @@ func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info().Str("client_id", clientID).Msg("SSE connection closed")
 }
 
-func (h *Handler) StartConsumers(ctx context.Context, brokers []string, topics []string, groupIDs []string, timeout time.Duration) {
-	for i, topic := range topics {
-		err := h.consManager.AddConsumer(
-			brokers,
-			topic,
-			groupIDs[i],
-			h.nodeID,
-			timeout,
-			h.processMessage,
-		)
-		if err != nil {
-			log.Error().Err(err).Str("topic", topic).Msg("Failed to add consumer")
-			continue
-		}
-	}
-
-	<-ctx.Done()
-	log.Info().Msg("Handler shutdown initiated")
-}
-
-func (h *Handler) processMessage(msg []byte) error {
-	notification, err := models.ParseNotification(msg)
-	if err != nil {
-		return err
-	}
-
-	switch n := notification.(type) {
-	case *models.SMTPNotification:
-		return h.handleSMTPNotification(n)
-	case *models.SSENotification:
-		return h.handleSSENotification(n)
-	default:
-		return fmt.Errorf("unknown notification type")
-	}
-}
-
-func (h *Handler) handleSMTPNotification(n *models.SMTPNotification) error {
-	retries, backoff := 3, time.Second*2
-	for i := 0; i < retries; i++ {
-		if err := h.emailSender.SendEmail(n); err != nil {
-			log.Warn().Err(err).Msgf("Retrying to send email (%d/%d)", i+1, retries)
-			time.Sleep(backoff)
-			backoff *= 2
-			continue
-		}
-
-		log.Info().Str("recipient", n.Recipient).Msg("Email sent successfully")
-		return nil
-	}
-
-	log.Error().Str("recipient", n.Recipient).Msg("Failed to send email after retries")
-	return fmt.Errorf("failed to send email to %s", n.Recipient)
-}
-
 func (h *Handler) handleSSENotification(n *models.SSENotification) error {
 	clientID := n.ClientID
 	nodeIDStr := fmt.Sprintf("%d", h.nodeID)
@@ -142,12 +140,12 @@ func (h *Handler) handleSSENotification(n *models.SSENotification) error {
 	}
 
 	if exist {
-		err := h.eventSender.SendEventToClient(clientID, n)
-		if err != nil {
+		if err := h.eventSender.SendEventToClient(clientID, n); err != nil {
 			log.Error().Err(err).Str("client_id", clientID).Msg("Failed to send event to local client")
 			return err
 		}
-		log.Info().Str("client_id", clientID).Msg("Event sent to local client successfully")
+
+		log.Info().Str("client_id", clientID).Msg("Event sent to client successfully")
 		return nil
 	} else {
 		nodeID, err := h.eventSender.CliManager.GetNodeForClient(clientID)
@@ -156,11 +154,11 @@ func (h *Handler) handleSSENotification(n *models.SSENotification) error {
 			return err
 		}
 
-		err = h.forwardMessageToNode(nodeID, lockNodeID, n)
-		if err != nil {
+		if err = h.forwardMessageToNode(nodeID, lockNodeID, n); err != nil {
 			log.Error().Err(err).Str("node_id", nodeID).Msg("Failed to forward message to node")
 			return err
 		}
+
 		log.Info().Str("node_id", nodeID).Msg("Message forwarded to node successfully")
 		return nil
 	}
@@ -185,5 +183,3 @@ func (h *Handler) forwardMessageToNode(nodeID string, lockNodeID string, notific
 
 	return nil
 }
-
-

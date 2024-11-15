@@ -100,13 +100,13 @@ func (cm *clientManager) RemoveClient(clientID string) error {
 	client, exists := cm.clients[clientID]
 	if !exists {
 		cm.mu.Unlock()
-		log.Error().Str("client_id", clientID).Msg("Client not found")
-		return fmt.Errorf("client %s not found", clientID)
+		log.Warn().Str("client_id", clientID).Msg("Client already removed")
+		return nil
 	}
-
-	client.Close()
 	delete(cm.clients, clientID)
 	cm.mu.Unlock()
+
+	client.Close()
 
 	err := cm.distLock.Release(clientID)
 	if err != nil {
@@ -118,12 +118,7 @@ func (cm *clientManager) RemoveClient(clientID string) error {
 	return nil
 }
 
-func (cm *clientManager) DisconnectAllClients() {
-	if len(cm.clients) == 0 {
-		log.Info().Msg("No clients to disconnect")
-		return
-	}
-
+func (cm *clientManager) CloseAllClients() {
 	cm.mu.RLock()
 	clientsCopy := make(map[string]*Client, len(cm.clients))
 	for clientID, client := range cm.clients {
@@ -132,13 +127,7 @@ func (cm *clientManager) DisconnectAllClients() {
 	cm.mu.RUnlock()
 
 	for clientID, client := range clientsCopy {
-		log.Info().Str("client_id", clientID).Msg("Disconnecting client during shutdown")
+		log.Info().Str("client_id", clientID).Msg("Closing client connection")
 		client.Close()
-
-		if err := cm.distLock.Release(clientID); err != nil {
-			log.Error().Err(err).Str("client_id", clientID).Msg("Failed to release lock for client")
-		} else {
-			log.Info().Str("client_id", clientID).Msg("Lock released for client")
-		}
 	}
 }

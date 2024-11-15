@@ -69,7 +69,6 @@ func (c *Client) SendEvent(eventID, eventType, data string) error {
 			return err
 		}
 		c.Flusher.Flush()
-		log.Info().Str("client_id", c.ClientID).Msg("Event sent to client")
 	}
 
 	return nil
@@ -78,14 +77,17 @@ func (c *Client) SendEvent(eventID, eventType, data string) error {
 func (c *Client) WaitForDisconnection(cm *clientManager) {
 	select {
 	case <-c.DisconnectChan:
+		log.Info().Str("client_id", c.ClientID).Msg("Client disconnected")
 		cm.RemoveClient(c.ClientID)
 	case <-c.Context.Done():
+		log.Info().Str("client_id", c.ClientID).Msg("Client context done")
 		cm.RemoveClient(c.ClientID)
 	}
 }
 
 func (c *Client) Close() {
 	c.once.Do(func() {
+		log.Info().Str("client_id", c.ClientID).Msg("Closing client")
 		c.cancelFunc()
 		close(c.DisconnectChan)
 	})

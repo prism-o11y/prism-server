@@ -61,9 +61,8 @@ func New() (*Dependencies, error) {
 }
 
 func (d *Dependencies) Close(ctx context.Context) error {
-	d.ConsManager.CloseAllConsumers()
+	d.ConsManager.CloseAllConsumers(ctx)
 	d.ProducerManager.CloseAllProducers()
-	d.EventSender.Close()
 
 	if err := d.redisClient.Close(); err != nil {
 		log.Error().Err(err).Msg("Failed to close redis client")

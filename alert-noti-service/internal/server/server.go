@@ -80,13 +80,17 @@ func (s *Server) Start(ctx context.Context) {
 }
 
 func (s *Server) Stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
+
+	s.deps.EventSender.Close()
 
 	if err := s.server.Shutdown(ctx); err != nil {
 		log.Error().Err(err).Msg("Error shutting down HTTP server")
 		return err
 	}
+
 	s.deps.Close(ctx)
+
 	return nil
 }

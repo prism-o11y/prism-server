@@ -80,7 +80,7 @@ func (s *Server) Start(ctx context.Context) {
 }
 
 func (s *Server) Stop() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 
 	if err := s.server.Shutdown(ctx); err != nil {

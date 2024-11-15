@@ -53,7 +53,7 @@ func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 
 	flusher.Flush()
 
-	client, err := sse.NewClient(clientID, w)
+	client, err := sse.NewClient(clientID, w, r.Context())
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create client")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -136,7 +136,11 @@ func (h *Handler) handleSSENotification(n *models.SSENotification) error {
 	clientID := n.ClientID
 	nodeIDStr := fmt.Sprintf("%d", h.nodeID)
 
-	lockNodeID, exist := h.eventSender.CliManager.HasClient(clientID, nodeIDStr)
+	lockNodeID, exist, err := h.eventSender.CliManager.HasClient(clientID, nodeIDStr)
+	if err != nil {
+		return err
+	}
+
 	if exist {
 		err := h.eventSender.SendEventToClient(clientID, n)
 		if err != nil {
@@ -181,3 +185,5 @@ func (h *Handler) forwardMessageToNode(nodeID string, lockNodeID string, notific
 
 	return nil
 }
+
+

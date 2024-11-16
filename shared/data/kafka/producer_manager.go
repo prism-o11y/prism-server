@@ -50,9 +50,7 @@ func (m *ProducerManager) CloseAllProducers() {
 
 	log.Info().Msg("Closing all Kafka producers")
 	for topic, producer := range m.producers {
-		if err := producer.Close(); err != nil {
-			log.Error().Err(err).Str("topic", topic).Msg("Error closing Kafka producer")
-		} else {
+		if err := producer.Close(); err == nil {
 			log.Info().Str("topic", topic).Msg("Kafka producer closed")
 		}
 	}

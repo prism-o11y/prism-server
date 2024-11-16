@@ -65,13 +65,7 @@ func (c *Consumer) start() {
 			continue
 		}
 
-		if err := c.handler(msg.Value); err != nil {
-			log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Handler failed to process message")
-		}
-
-		if err := c.reader.CommitMessages(c.ctx, msg); err != nil {
-			log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Failed to commit message")
-		}
+		c.processMessage(msg)
 
 		select {
 		case <-c.ctx.Done():
@@ -80,6 +74,16 @@ func (c *Consumer) start() {
 		default:
 			continue
 		}
+	}
+}
+
+func (c *Consumer) processMessage(msg kafka.Message) {
+	if err := c.handler(msg.Value); err != nil {
+		log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Handler failed to process message")
+	}
+
+	if err := c.reader.CommitMessages(c.ctx, msg); err != nil {
+		log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Failed to commit message")
 	}
 }
 

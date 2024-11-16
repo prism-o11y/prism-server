@@ -26,8 +26,10 @@ func (m *ProducerManager) AddProducer(brokers []string, topic string, partition 
 	if producer, exists := m.producers[topic]; exists {
 		return producer
 	}
+
 	producer := NewProducer(brokers, topic, partition)
 	m.producers[topic] = producer
+	log.Info().Str("topic", topic).Msg("New Kafka producer created")
 	return producer
 }
 
@@ -47,7 +49,6 @@ func (m *ProducerManager) CloseAllProducers() {
 	defer m.mu.Unlock()
 
 	log.Info().Msg("Closing all Kafka producers")
-
 	for topic, producer := range m.producers {
 		if err := producer.Close(); err != nil {
 			log.Error().Err(err).Str("topic", topic).Msg("Error closing Kafka producer")
@@ -55,6 +56,5 @@ func (m *ProducerManager) CloseAllProducers() {
 			log.Info().Str("topic", topic).Msg("Kafka producer closed")
 		}
 	}
-
 	log.Info().Msg("All Kafka producers closed")
 }

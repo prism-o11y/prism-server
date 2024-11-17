@@ -80,9 +80,11 @@ func (d *DistributedLock) GetNodeForClient(clientID string) (string, error) {
 
 	nodeID, err := d.client.Get(key).Result()
 	if err == redis.Nil {
+		log.Warn().Str("client_id", clientID).Msg("No lock found for client")
 		return "", ErrNoLockFound
 	}
 	if err != nil {
+		log.Error().Err(err).Str("client_id", clientID).Msg("Failed to get node for client")
 		return "", ErrFailedToGetNode
 	}
 

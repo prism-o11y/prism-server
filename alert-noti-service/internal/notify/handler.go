@@ -88,12 +88,14 @@ func (h *Handler) handleSMTPNotification(n *models.SMTPNotification) error {
 
 func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	clientID := r.URL.Query().Get("client_id")
-	nodeIDStr := fmt.Sprintf("%d", h.nodeID)
+	if clientID == "" {
+		http.Error(w, "client_id is required", http.StatusBadRequest)
+		return
+	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	flusher, ok := w.(http.Flusher)
@@ -112,7 +114,8 @@ func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.eventSender.CliManager.AddClient(clientID, nodeIDStr, client)
+	nodeIDStr := fmt.Sprintf("%d", h.nodeID)
+	connectionID, err := h.eventSender.CliManager.AddClient(clientID, nodeIDStr, client)
 	if err != nil {
 		if err.Error() == fmt.Sprintf("client %s is already connected to another node", clientID) {
 			http.Error(w, "Client is connected to another node", http.StatusConflict)
@@ -123,29 +126,26 @@ func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info().Str("client_id", clientID).Msg("SSE connection established")
-
+	log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("SSE connection established")
 	<-client.DisconnectChan
-
-	log.Info().Str("client_id", clientID).Msg("SSE connection closed")
+	log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("SSE connection closed")
 }
 
 func (h *Handler) handleSSENotification(n *models.SSENotification) error {
-	clientID := n.ClientID
-	nodeIDStr := fmt.Sprintf("%d", h.nodeID)
+	clientID, nodeIDStr := n.ClientID, fmt.Sprintf("%d", h.nodeID)
 
-	lockNodeID, exist, err := h.eventSender.CliManager.HasClient(clientID, nodeIDStr)
+	exists, err := h.eventSender.CliManager.HasClient(clientID, nodeIDStr)
 	if err != nil {
 		return err
 	}
 
-	if exist {
+	if exists {
 		if err := h.eventSender.SendEventToClient(clientID, n); err != nil {
-			log.Error().Err(err).Str("client_id", clientID).Msg("Failed to send event to local client")
+			log.Error().Err(err).Str("client_id", clientID).Msg("Failed to send event to clients")
 			return err
 		}
 
-		log.Info().Str("client_id", clientID).Msg("Event sent to client successfully")
+		log.Info().Str("client_id", clientID).Msg("Event sent to clients successfully")
 		return nil
 	} else {
 		nodeID, err := h.eventSender.CliManager.GetNodeForClient(clientID)
@@ -154,7 +154,7 @@ func (h *Handler) handleSSENotification(n *models.SSENotification) error {
 			return err
 		}
 
-		if err = h.forwardMessageToNode(nodeID, lockNodeID, n); err != nil {
+		if err = h.forwardMessageToNode(nodeID, n); err != nil {
 			log.Error().Err(err).Str("node_id", nodeID).Msg("Failed to forward message to node")
 			return err
 		}
@@ -164,22 +164,17 @@ func (h *Handler) handleSSENotification(n *models.SSENotification) error {
 	}
 }
 
-func (h *Handler) forwardMessageToNode(nodeID string, lockNodeID string, notification *models.SSENotification) error {
+func (h *Handler) forwardMessageToNode(nodeID string, notification *models.SSENotification) error {
 	msg, err := jsoniter.Marshal(notification)
 	if err != nil {
 		return err
 	}
 
-	lockIDInt, err := strconv.Atoi(lockNodeID)
+	nodeIDInt, err := strconv.Atoi(nodeID)
 	if err != nil {
-		log.Err(err).Msg("Failed to convert lock node ID to int")
+		log.Err(err).Msg("Failed to convert node ID to int")
 		return err
 	}
 
-	err = h.producerManager.ProduceToPartition(kafka.TransferTopic, lockIDInt, []byte(nodeID), msg)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.producerManager.ProduceToPartition(kafka.TransferTopic, nodeIDInt, []byte(nodeID), msg)
 }

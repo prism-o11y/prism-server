@@ -13,8 +13,9 @@ import (
 )
 
 type Client struct {
-	ClientID    string
-	LastEventID string
+	ClientID     string
+	LastEventID  string
+	ConnectionID string
 
 	ResponseWriter http.ResponseWriter
 	Flusher        http.Flusher
@@ -74,20 +75,19 @@ func (c *Client) SendEvent(eventID, eventType, data string) error {
 	return nil
 }
 
-func (c *Client) WaitForDisconnection(cm *clientManager) {
+func (c *Client) WaitForDisconnection(cm *clientManager, clientID, connectionID string) {
 	select {
 	case <-c.DisconnectChan:
-		log.Info().Str("client_id", c.ClientID).Msg("Client disconnected")
-		cm.RemoveClient(c.ClientID)
+		log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("Client disconnected")
+		cm.RemoveClient(clientID, connectionID)
 	case <-c.Context.Done():
-		log.Info().Str("client_id", c.ClientID).Msg("Client context done")
-		cm.RemoveClient(c.ClientID)
+		log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("Client context done")
+		cm.RemoveClient(clientID, connectionID)
 	}
 }
 
 func (c *Client) Close() {
 	c.once.Do(func() {
-		log.Info().Str("client_id", c.ClientID).Msg("Closing client")
 		c.cancelFunc()
 		close(c.DisconnectChan)
 	})

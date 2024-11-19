@@ -15,19 +15,6 @@ services:
     ports:
       - "8500:8500"
 
-  alert-noti-service-2:
-    build: 
-      context: .
-      dockerfile: alert-noti-service/Dockerfile
-    env_file:
-      - assets/env/.env
-    environment:
-      - SERVER_NODE=1
-    ports:
-      - "8002:8002"
-    depends_on:
-      - kafka
-
   db:
     image: postgres:16  
     restart: always

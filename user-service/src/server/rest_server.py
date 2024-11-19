@@ -85,10 +85,8 @@ class RestServer:
             await kafka_producer.stop()
             await postgres_manager.disconnect()
             logging.info("All services stopped successfully.")
-
+            
             logging.shutdown()
-
-
 
 
     def get_app(self) -> FastAPI:

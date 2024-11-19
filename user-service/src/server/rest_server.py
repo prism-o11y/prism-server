@@ -59,8 +59,6 @@ class RestServer:
         
         postgres_manager: PostgresManager = app.state.postgres_manager
         await postgres_manager.connect()
-
-        asyncio.sleep(10)
         kafka_producer: KafkaProducerService = KafkaProducerService(self.config.KAFKA)
         app.state.kafka_producer = kafka_producer
         await kafka_producer.start()
@@ -81,10 +79,14 @@ class RestServer:
             yield
 
         finally:
+
+            logging.info("Starting graceful shutdown...")
             await kafka_consumer.stop_user_consumer()
             await kafka_producer.stop()
             await postgres_manager.disconnect()
+            logging.info("All services stopped successfully.")
 
+            logging.shutdown()
 
 
     def get_app(self) -> FastAPI:

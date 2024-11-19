@@ -14,8 +14,9 @@ _router = APIRouter(prefix="/auth")
 
 @_router.get("/login",name="auth:login")
 async def login(request: Request, auth0Manager = Depends(get_auth0_manager)):
+    callback_url = f"{request.url.scheme}://{request.url.hostname}/api/user-service" + request.url_for("auth:callback").path
     return await auth0Manager.oauth.auth0.authorize_redirect(
-        request,request.url_for("auth:callback")
+        request,callback_url
     )
 
 @_router.get("/callback", name="auth:callback")

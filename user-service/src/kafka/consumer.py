@@ -44,7 +44,7 @@ class KafkaConsumerService:
                 await self.task
 
             except asyncio.CancelledError:
-                logging.exception({"event": "Kafka-Consumer", "topic":self.topic.get('user'), "status": "Cancelled"})
+                logging.info({"event": "Kafka-Consumer", "topic":self.topic.get('user'), "status": "Cancelled"})
 
         await self.user_consumer.stop()
         logging.info({"event": "Kafka-Consumer", "topic":self.topic.get('user'), "status": "Stopped"})
@@ -55,7 +55,7 @@ class KafkaConsumerService:
                 await self.handle_message(message)
 
         except asyncio.CancelledError:
-            logging.exception({"event": "Kafka-Consumer", "topic":self.topic.get('user'), "status": "Cancelled"})
+            logging.info({"event": "Kafka-Consumer", "topic":self.topic.get('user'), "status": "Cancelled"})
 
         except Exception as e:
             logging.exception({"event": "Kafka-Consumer", "topic":self.topic.get('user'), "status": e})
@@ -94,7 +94,7 @@ class KafkaConsumerService:
                         pass
 
                     case _:
-                        logging.error({"event": "Process-message", "action": user_data.action, "status": "Unhandled"})
+                        logging.warning({"event": "Process-message", "action": user_data.action, "status": "Unhandled"})
             else:
                 logging.error({"event": "Process-message", "action": user_data.action, "status": "User Data Decode Failed"})
         else:

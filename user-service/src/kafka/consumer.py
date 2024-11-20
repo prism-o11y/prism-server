@@ -91,7 +91,7 @@ class KafkaConsumerService:
                         pass
 
                     case model.Action.DELETE_USER:
-                        pass
+                        await self.user_service.delete_user(user_id=user_data.user_data.get("user_id"))
 
                     case _:
                         logging.warning({"event": "Process-message", "action": user_data.action, "status": "Unhandled"})

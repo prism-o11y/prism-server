@@ -11,23 +11,21 @@ import (
 
 type Producer struct {
 	writer    *kafka.Writer
-	partition int
 	mu        sync.Mutex
 	wg        sync.WaitGroup
 }
 
-func NewProducer(brokers []string, topic string, partition int) *Producer {
+func NewProducer(brokers []string, topic string) *Producer {
 	return &Producer{
 		writer: &kafka.Writer{
 			Addr:     kafka.TCP(brokers...),
 			Topic:    topic,
 			Balancer: &kafka.Hash{},
 		},
-		partition: partition,
 	}
 }
 
-func (p *Producer) Produce(ctx context.Context, partition int, key, message []byte) error {
+func (p *Producer) Produce(ctx context.Context, key, message []byte) error {
 	p.wg.Add(1)
 	defer p.wg.Done()
 
@@ -37,7 +35,6 @@ func (p *Producer) Produce(ctx context.Context, partition int, key, message []by
 	msg := kafka.Message{
 		Key:       key,
 		Value:     message,
-		Partition: partition,
 		Time:      time.Now(),
 	}
 
@@ -45,7 +42,6 @@ func (p *Producer) Produce(ctx context.Context, partition int, key, message []by
 		log.Error().Err(err).Msg("Failed to produce message")
 		return err
 	}
-	log.Info().Msg("Message produced successfully")
 	return nil
 }
 

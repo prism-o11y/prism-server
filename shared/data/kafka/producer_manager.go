@@ -19,21 +19,20 @@ func NewProducerManager() *ProducerManager {
 	}
 }
 
-func (m *ProducerManager) AddProducer(brokers []string, topic string, partition int) *Producer {
+func (m *ProducerManager) AddProducer(brokers []string, topic string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	if producer, exists := m.producers[topic]; exists {
-		return producer
+	if _, exists := m.producers[topic]; exists {
+		return fmt.Errorf("producer already exists for topic %s", topic)
 	}
 
-	producer := NewProducer(brokers, topic, partition)
-	m.producers[topic] = producer
+	m.producers[topic] = NewProducer(brokers, topic)
 	log.Info().Str("topic", topic).Msg("New Kafka producer created")
-	return producer
+	return nil
 }
 
-func (m *ProducerManager) ProduceToPartition(topic string, partition int, key, message []byte) error {
+func (m *ProducerManager) Produce(topic string, key, message []byte) error {
 	m.mu.RLock()
 	producer, exists := m.producers[topic]
 	m.mu.RUnlock()
@@ -41,7 +40,7 @@ func (m *ProducerManager) ProduceToPartition(topic string, partition int, key, m
 	if !exists {
 		return fmt.Errorf("no producer found for topic %s", topic)
 	}
-	return producer.Produce(context.Background(), partition, key, message)
+	return producer.Produce(context.Background(), key, message)
 }
 
 func (m *ProducerManager) CloseAllProducers() {

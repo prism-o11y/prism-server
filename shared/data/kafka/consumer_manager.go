@@ -29,8 +29,7 @@ func (m *ConsumerManager) AddConsumer(brokers []string, topic string, groupID st
 		return fmt.Errorf("consumer already exists for topic %s", topic)
 	}
 
-	consumer := NewConsumer(brokers, topic, groupID, partition, timeout, handler)
-	m.cMap[topic] = consumer
+	m.cMap[topic] = NewConsumer(brokers, topic, groupID, partition, timeout, handler)
 	log.Info().Str("topic", topic).Msg("New Kafka consumer added")
 	return nil
 }

@@ -21,20 +21,14 @@ type Consumer struct {
 
 func NewConsumer(brokers []string, topic string, groupID string, partition int, timeout time.Duration, handler HandlerFunc) *Consumer {
 	readerCfg := kafka.ReaderConfig{
-		Brokers:  brokers,
-		Topic:    topic,
-		MinBytes: 10e3,
-		MaxBytes: 10e6,
+		Brokers:     brokers,
+		Topic:       topic,
+		GroupID:     groupID,
+		MinBytes:    10e3,
+		MaxBytes:    10e6,
 	}
-
-	if topic == "transfer-topic" {
-		readerCfg.Partition = partition
-	} else {
-		readerCfg.GroupID = groupID
-	}
-
+	
 	ctx, cancel := context.WithCancel(context.Background())
-
 	consumer := &Consumer{
 		reader:  kafka.NewReader(readerCfg),
 		timeout: timeout,
@@ -81,7 +75,6 @@ func (c *Consumer) processMessage(msg kafka.Message) {
 	if err := c.handler(msg.Value); err != nil {
 		log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Handler failed to process message")
 	}
-
 	if err := c.reader.CommitMessages(c.ctx, msg); err != nil {
 		log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Failed to commit message")
 	}

@@ -7,4 +7,5 @@ const (
 
 const (
 	NotifyGroupID = "notify-group"
+	TransferGroupID = "transfer-group"
 )

@@ -8,7 +8,3 @@ type SSENotification struct {
 	Message  string        `json:"message"`
 	DateTime time.Time     `json:"dateTime"`
 }
-
-func (s *SSENotification) GetAction() Action {
-	return SSE
-}

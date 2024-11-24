@@ -8,13 +8,18 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type Notification interface {
-	GetAction() Action
-}
+type Notification interface {}
 
 type NotificationWrapper struct {
 	Action Action          `json:"action"`
 	Data   json.RawMessage `json:"data"`
+}
+
+func NewNotificationWrapper(action Action, data []byte) NotificationWrapper {
+	return NotificationWrapper{
+		Action: action,
+		Data:   data,
+	}
 }
 
 func ParseNotification(msg []byte) (Notification, error) {

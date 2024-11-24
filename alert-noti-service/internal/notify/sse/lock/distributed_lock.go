@@ -91,6 +91,10 @@ func (d *DistributedLock) GetNodeForClient(clientID string) (string, error) {
 	return nodeID, nil
 }
 
+func (d *DistributedLock) GetRenewInterval() time.Duration {
+	return d.ttl / 2
+}
+
 func (d *DistributedLock) getClientKey(clientID string) string {
 	return fmt.Sprintf("client:%s", clientID)
 }

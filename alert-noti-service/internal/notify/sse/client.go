@@ -36,7 +36,6 @@ func NewClient(clientID string, w http.ResponseWriter, reqCtx context.Context) (
 	}
 
 	ctx, cancel := context.WithCancel(reqCtx)
-
 	return &Client{
 		ClientID:       clientID,
 		ResponseWriter: w,
@@ -101,7 +100,6 @@ func (c *Client) StartHeartbeat(interval time.Duration, lock *lock.DistributedLo
 		select {
 		case <-ticker.C:
 			c.mu.Lock()
-
 			_, err := fmt.Fprintf(c.ResponseWriter, ": keep-alive\n\n")
 			if err != nil {
 				c.mu.Unlock()
@@ -110,16 +108,26 @@ func (c *Client) StartHeartbeat(interval time.Duration, lock *lock.DistributedLo
 				return
 			}
 			c.Flusher.Flush()
-
 			c.mu.Unlock()
+		case <-c.Context.Done():
+			return
+		}
+	}
+}
 
-			err = lock.Renew(c.ClientID)
-			if err != nil {
-				log.Error().Err(err).Str("client_id", c.ClientID).Msg("Failed to renew lock, disconnecting client")
-				c.Close()
+func (c *Client) StartRenewLock(interval time.Duration, lockCtx context.Context, lock *lock.DistributedLock) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			if err := lock.Renew(c.ClientID); err != nil {
+				log.Error().Err(err).Str("client_id", c.ClientID).Msg("Failed to renew lock")
 				return
 			}
-		case <-c.Context.Done():
+		case <-lockCtx.Done():
+			log.Info().Str("client_id", c.ClientID).Msg("Lock renewal stopped")
 			return
 		}
 	}

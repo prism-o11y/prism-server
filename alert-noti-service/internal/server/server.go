@@ -64,12 +64,14 @@ func buildAddress(address string, nodeID int, nodeCount int) (string, error) {
 func (s *Server) routes() {
 	s.router.Get("/health", server.HealthCheckHandler)
 	s.router.Get("/events", s.deps.NotifyHandler.SSEHandler)
+	// test endpoint for sse notifications
+	s.router.Post("/notify", s.deps.NotifyHandler.TestNotifyEndpoint)
 }
 
 func (s *Server) Start(ctx context.Context) {
 	brokers := []string{s.deps.Config.Databases.KafkaAddress}
 	topics := []string{kafka.NotifyTopic, kafka.TransferTopic}
-	groups := []string{kafka.NotifyGroupID, "temp-group"}
+	groups := []string{kafka.NotifyGroupID, kafka.TransferGroupID}
 	timeOut := 10 * time.Second
 	go s.deps.NotifyHandler.StartConsumers(ctx, brokers, topics, groups, timeOut)
 

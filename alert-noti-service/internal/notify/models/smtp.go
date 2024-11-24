@@ -8,7 +8,3 @@ type SMTPNotification struct {
 	Message   string        `json:"message"`
 	DateTime  time.Time     `json:"dateTime"`
 }
-
-func (s *SMTPNotification) GetAction() Action {
-	return SMTP
-}

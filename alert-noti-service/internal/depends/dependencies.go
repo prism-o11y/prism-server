@@ -45,8 +45,8 @@ func New() (*Dependencies, error) {
 	consManager := kafka.NewConsumerManager()
 	producerManager := kafka.NewProducerManager()
 
-	cacheManager := lock.NewDistributedLock(client, lock.DefaultLockTTL)
-	eventSender := sse.NewEventSender(cacheManager)
+	distLock := lock.NewDistributedLock(client, lock.DefaultLockTTL)
+	eventSender := sse.NewEventSender(distLock)
 	nodeID := cfg.Server.NodeID
 	notifyHandler := notify.NewHandler(eventSender, emailSender, producerManager, consManager, nodeID)
 

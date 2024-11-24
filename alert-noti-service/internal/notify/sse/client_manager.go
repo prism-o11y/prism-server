@@ -99,6 +99,7 @@ func (cm *clientManager) RemoveClient(clientID, connectionID string) error {
 
 	client.Close()
 	delete(ownerships.connections, connectionID)
+	log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("Client removed successfully")
 
 	if len(ownerships.connections) == 0 {
 		ownerships.lockCancel()
@@ -110,7 +111,6 @@ func (cm *clientManager) RemoveClient(clientID, connectionID string) error {
 		delete(cm.ownerships, clientID)
 	}
 
-	log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("Client removed successfully")
 	return nil
 }
 

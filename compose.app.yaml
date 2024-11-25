@@ -38,3 +38,18 @@ services:
     depends_on:
       - cache
       - kafka
+
+  alert-noti-service-3:
+    build: 
+      context: .
+      dockerfile: alert-noti-service/Dockerfile
+    env_file:
+      - assets/env/.env
+    environment:
+      - SERVER_NODE=2
+    ports:
+      - "8003:8003"
+    depends_on:
+      - cache
+      - kafka
+

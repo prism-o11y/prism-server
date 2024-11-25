@@ -3,7 +3,7 @@ services:
     image: confluentinc/cp-kafka:latest
     entrypoint: >
       bash -c "
-      kafka-topics --alter --bootstrap-server kafka:9092 --topic transfer-topic --partitions 2
+      kafka-topics --alter --bootstrap-server kafka:9092 --topic transfer-topic --partitions 3
       "
     restart: "no"
     depends_on:
@@ -21,3 +21,6 @@ services:
     restart: "no"
     depends_on:
       - kafka
+
+volumes:
+  kafka_data:

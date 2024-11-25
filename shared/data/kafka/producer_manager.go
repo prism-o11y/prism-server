@@ -32,7 +32,7 @@ func (m *ProducerManager) AddProducer(brokers []string, topic string) error {
 	return nil
 }
 
-func (m *ProducerManager) Produce(topic string, key, message []byte) error {
+func (m *ProducerManager) Produce(topic string, partition int, key, message []byte) error {
 	m.mu.RLock()
 	producer, exists := m.producers[topic]
 	m.mu.RUnlock()
@@ -40,7 +40,7 @@ func (m *ProducerManager) Produce(topic string, key, message []byte) error {
 	if !exists {
 		return fmt.Errorf("no producer found for topic %s", topic)
 	}
-	return producer.Produce(context.Background(), key, message)
+	return producer.Produce(context.Background(), partition, key, message)
 }
 
 func (m *ProducerManager) CloseAllProducers() {

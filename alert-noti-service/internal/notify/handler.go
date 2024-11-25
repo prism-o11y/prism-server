@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
 	"github.com/prism-o11y/prism-server/shared/data/kafka"
 	"github.com/rs/zerolog/log"
+	segmentioKafka "github.com/segmentio/kafka-go"
 
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/models"
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/smtp"
@@ -55,8 +57,8 @@ func (h *Handler) StartConsumers(ctx context.Context, brokers []string, topics [
 	<-ctx.Done()
 }
 
-func (h *Handler) processMessage(msg []byte) error {
-	notification, err := models.ParseNotification(msg)
+func (h *Handler) processMessage(msg segmentioKafka.Message) error {
+	notification, err := models.ParseNotification(msg.Value)
 	if err != nil {
 		return err
 	}
@@ -162,7 +164,14 @@ func (h *Handler) forwardMessageToNode(notification *models.SSENotification) err
 		log.Err(err).Str("client_id", notification.ClientID).Msg("Failed to marshal notification data")
 		return err
 	}
-	if err := h.producerManager.Produce(kafka.TransferTopic, []byte(nodeID), msg); err != nil {
+
+	partition, err := strconv.Atoi(nodeID)
+	if err != nil {
+		log.Error().Err(err).Str("node_id", nodeID).Msg("Failed to convert node ID to partition")
+		return err
+	}
+
+	if err := h.producerManager.Produce(kafka.TransferTopic, partition, []byte(notification.ClientID), msg); err != nil {
 		return err
 	}
 

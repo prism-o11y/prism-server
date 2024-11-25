@@ -10,9 +10,9 @@ import (
 )
 
 type Producer struct {
-	writer    *kafka.Writer
-	mu        sync.Mutex
-	wg        sync.WaitGroup
+	writer *kafka.Writer
+	mu     sync.Mutex
+	wg     sync.WaitGroup
 }
 
 func NewProducer(brokers []string, topic string) *Producer {
@@ -20,12 +20,12 @@ func NewProducer(brokers []string, topic string) *Producer {
 		writer: &kafka.Writer{
 			Addr:     kafka.TCP(brokers...),
 			Topic:    topic,
-			Balancer: &kafka.Hash{},
+			Balancer: &kafka.ReferenceHash{},
 		},
 	}
 }
 
-func (p *Producer) Produce(ctx context.Context, key, message []byte) error {
+func (p *Producer) Produce(ctx context.Context, partition int, key, message []byte) error {
 	p.wg.Add(1)
 	defer p.wg.Done()
 
@@ -33,9 +33,9 @@ func (p *Producer) Produce(ctx context.Context, key, message []byte) error {
 	defer p.mu.Unlock()
 
 	msg := kafka.Message{
-		Key:       key,
-		Value:     message,
-		Time:      time.Now(),
+		Value: message,
+		Key:   key,
+		Time:  time.Now(),
 	}
 
 	if err := p.writer.WriteMessages(ctx, msg); err != nil {

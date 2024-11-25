@@ -9,7 +9,7 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
-type HandlerFunc func([]byte) error
+type HandlerFunc func(msg kafka.Message) error
 
 type Consumer struct {
 	reader  *kafka.Reader
@@ -24,10 +24,11 @@ func NewConsumer(brokers []string, topic string, groupID string, partition int, 
 		Brokers:     brokers,
 		Topic:       topic,
 		GroupID:     groupID,
+		StartOffset: kafka.LastOffset,
 		MinBytes:    10e3,
 		MaxBytes:    10e6,
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
 	consumer := &Consumer{
 		reader:  kafka.NewReader(readerCfg),
@@ -55,7 +56,6 @@ func (c *Consumer) start() {
 				return
 			}
 			log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Failed to fetch message from Kafka")
-			time.Sleep(1 * time.Second)
 			continue
 		}
 
@@ -72,7 +72,7 @@ func (c *Consumer) start() {
 }
 
 func (c *Consumer) processMessage(msg kafka.Message) {
-	if err := c.handler(msg.Value); err != nil {
+	if err := c.handler(msg); err != nil {
 		log.Error().Err(err).Str("topic", c.reader.Config().Topic).Msg("Handler failed to process message")
 	}
 	if err := c.reader.CommitMessages(c.ctx, msg); err != nil {

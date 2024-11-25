@@ -44,29 +44,6 @@ services:
     depends_on:
       - zookeeper
 
-  kafka-update:
-    image: confluentinc/cp-kafka:latest
-    entrypoint: >
-      bash -c "
-      kafka-topics --alter --bootstrap-server kafka:9092 --topic transfer-topic --partitions 2
-      "
-    restart: "no"
-    depends_on:
-      - kafka
-
-  kafka-init:
-    image: confluentinc/cp-kafka:latest
-    entrypoint: >
-      sh -c "
-      kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic log-topic
-      && kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic notify-topic
-      && kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic user-topic
-      && kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic transfer-topic
-      "
-    restart: "no"
-    depends_on:
-      - kafka
-
 volumes:
   postgres_data:
   redis_data:

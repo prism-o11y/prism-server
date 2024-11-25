@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -31,7 +30,7 @@ func NewHandler(eventSender *sse.EventSender, emailSender *smtp.EmailSender, pro
 		emailSender:     emailSender,
 		producerManager: producerManager,
 		consManager:     consManager,
-		nodeID:          nodeID,
+		nodeID:          nodeID + 1,
 	}
 }
 
@@ -165,13 +164,8 @@ func (h *Handler) forwardMessageToNode(notification *models.SSENotification) err
 		return err
 	}
 
-	partition, err := strconv.Atoi(nodeID)
-	if err != nil {
-		log.Error().Err(err).Str("node_id", nodeID).Msg("Failed to convert node ID to partition")
-		return err
-	}
-
-	if err := h.producerManager.Produce(kafka.TransferTopic, partition, []byte(notification.ClientID), msg); err != nil {
+	key := []byte(fmt.Sprintf("%s:%s", nodeID, notification.ClientID))
+	if err := h.producerManager.Produce(kafka.TransferTopic, key, msg); err != nil {
 		return err
 	}
 

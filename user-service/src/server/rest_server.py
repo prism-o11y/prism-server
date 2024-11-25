@@ -1,4 +1,4 @@
-import logging, os
+import logging, os, asyncio
 from typing import AsyncGenerator, Awaitable, Callable
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi import FastAPI, Request, Response
@@ -85,7 +85,7 @@ class RestServer:
             await kafka_producer.stop()
             await postgres_manager.disconnect()
             logging.info("All services stopped successfully.")
-            
+
             logging.shutdown()
 
 

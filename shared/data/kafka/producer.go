@@ -18,14 +18,16 @@ type Producer struct {
 func NewProducer(brokers []string, topic string) *Producer {
 	return &Producer{
 		writer: &kafka.Writer{
-			Addr:     kafka.TCP(brokers...),
-			Topic:    topic,
-			Balancer: &kafka.ReferenceHash{},
+			Addr:  kafka.TCP(brokers...),
+			Topic: topic,
+			Balancer: &kafka.Murmur2Balancer{
+				Consistent: true,
+			},
 		},
 	}
 }
 
-func (p *Producer) Produce(ctx context.Context, partition int, key, message []byte) error {
+func (p *Producer) Produce(ctx context.Context, key, message []byte) error {
 	p.wg.Add(1)
 	defer p.wg.Done()
 
@@ -33,8 +35,8 @@ func (p *Producer) Produce(ctx context.Context, partition int, key, message []by
 	defer p.mu.Unlock()
 
 	msg := kafka.Message{
-		Value: message,
 		Key:   key,
+		Value: message,
 		Time:  time.Now(),
 	}
 

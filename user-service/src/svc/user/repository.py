@@ -1,7 +1,7 @@
 from typing import Optional
 from asyncpg import Connection
 from fastapi import Depends
-from src.svc.user.models import User
+from src.svc.user.models import User, STATUS
 import uuid
 from src.database.postgres import PostgresManager, get_db_connection
 from asyncpg import Connection
@@ -44,11 +44,12 @@ class UserRepository:
             select_query = '''
                             SELECT user_id, org_id, email, status_id, created_at, updated_at, last_login
                             FROM users
-                            WHERE user_id = $1 AND status_id = 1;
+                            WHERE user_id = $1 AND status_id = $2;
                             '''
             query_result = await self.connection.fetchrow(
                 select_query,
-                user_id
+                user_id,
+                STATUS.ACTIVE.value
             )
             return query_result
         
@@ -59,11 +60,12 @@ class UserRepository:
             select_query = '''
                             SELECT user_id, org_id, email, status_id, created_at, updated_at, last_login
                             FROM users
-                            WHERE email = $1 AND status_id = 1;
+                            WHERE email = $1 AND status_id = $2;
                            '''
             query_result = await self.connection.fetchrow(
                 select_query,
-                email
+                email,
+                STATUS.ACTIVE.value
             )
             return query_result
         
@@ -74,7 +76,7 @@ class UserRepository:
             select_query = '''
                             UPDATE users
                             SET org_id = $1, updated_at = $2, last_login = $3
-                            WHERE user_id = $4 AND status_id = 1
+                            WHERE user_id = $4 AND status_id = $5
                             RETURNING user_id;
                            '''
             user_id = await self.connection.fetchval(
@@ -82,7 +84,8 @@ class UserRepository:
                 user.org_id,
                 user.updated_at,
                 user.last_login,
-                user.user_id
+                user.user_id,
+                STATUS.ACTIVE.value
             )
 
             return user_id
@@ -94,12 +97,13 @@ class UserRepository:
             select_query = '''
                             UPDATE users
                             SET status_id = 2
-                            WHERE user_id = $1 AND status_id = 1
+                            WHERE user_id = $1 AND status_id = $2
                             RETURNING user_id;
                            '''
             user_id = await self.connection.fetchval(
                 select_query,
-                user_id
+                user_id,
+                STATUS.ACTIVE.value
             )
 
             return user_id

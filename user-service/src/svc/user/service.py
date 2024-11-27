@@ -2,6 +2,7 @@ from src.svc.user.repository import get_user_repository, UserRepository
 from ...kafka.producer import KafkaProducerService, get_kafka_producer_service
 from ...kafka import model
 from fastapi import Depends
+from ...jwt.service import get_jwt_manager, JWTManager
 from ...database.postgres import get_postgres_manager, PostgresManager
 from .models import User, STATUS
 import datetime as dt, uuid, logging
@@ -10,10 +11,17 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 class UserService:
 
-    def __init__(self, postgres_manager: PostgresManager, kafka_producer: KafkaProducerService):
+    def __init__(self, postgres_manager: PostgresManager, kafka_producer: KafkaProducerService, jwt_manager: JWTManager) -> None:
         self.kafka_producer = kafka_producer
         self.postgres_manager = postgres_manager
+        self.jwt_manager = jwt_manager
         self.base_config: BaseConfig = get_base_config()
+
+    async def create_user(self, user:User, auth0_sub:str):
+        result = await self.insert_user(user)
+        jwt = await self.jwt_manager.encode(result, auth0_sub)
+        return jwt
+
 
 
     async def produce_new_user(self, user: User):
@@ -84,16 +92,11 @@ class UserService:
 
 
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
-    async def insert_user(self, user: User):
+    async def insert_user(self, user: User) -> str:
         async with self.postgres_manager.get_connection() as connection:
             user_repo = UserRepository(connection)
             result = await user_repo.create_user(user)
-
-            if result:
-                logging.info({"event": "User-Login", "user": user.email ,"status": "Signup-success"})
-
-            else:
-                logging.info({"event": "User-Login", "user": user.email ,"status": "Login-success"})
+            return result
 
     async def get_user_by_id(self, user_id:uuid.UUID):
 
@@ -151,8 +154,9 @@ class UserService:
 
 
 async def get_user_service(
-        postgres_manager = Depends(get_postgres_manager),
-        kafka_producer: KafkaProducerService = Depends(get_kafka_producer_service)
+        postgres_manager:PostgresManager = Depends(get_postgres_manager),
+        kafka_producer: KafkaProducerService = Depends(get_kafka_producer_service),
+        jwt_manager: JWTManager = Depends(get_jwt_manager)
     ) -> UserService:
     
-    return UserService(postgres_manager,kafka_producer)
+    return UserService(postgres_manager,kafka_producer,jwt_manager)

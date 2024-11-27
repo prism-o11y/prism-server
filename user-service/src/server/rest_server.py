@@ -2,6 +2,7 @@ import logging, os, asyncio
 from typing import AsyncGenerator, Awaitable, Callable
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi import FastAPI, Request, Response
+from ..jwt.service import get_jwt_manager, JWTManager
 from fastapi.concurrency import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
 from src.api.v1.entry import new_v1_router
@@ -61,11 +62,13 @@ class RestServer:
         await postgres_manager.connect()
         kafka_producer: KafkaProducerService = KafkaProducerService(self.config.KAFKA)
         app.state.kafka_producer = kafka_producer
+        jwt_manager:JWTManager = JWTManager()
         await kafka_producer.start()
 
         user_svc: UserService = UserService(
             postgres_manager,
             kafka_producer,
+            jwt_manager
         )
 
         kafka_consumer: KafkaConsumerService = KafkaConsumerService(

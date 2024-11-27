@@ -1,9 +1,11 @@
 from typing import Optional
 from asyncpg import Connection
-from fastapi import Depends
+from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_404_NOT_FOUND
+from fastapi import Depends, HTTPException
 from src.svc.user.models import User, STATUS
 import uuid
 from src.database.postgres import PostgresManager, get_db_connection
+
 from asyncpg import Connection
 class UserRepository:
 
@@ -20,9 +22,10 @@ class UserRepository:
                             VALUES ($1, $2, $3, $4, $5)
                             ON CONFLICT (email) DO UPDATE
                             SET status_id = CASE
-                                            WHEN users.status_id = 2 THEN 1
+                                            WHEN users.status_id = $6 THEN $7
                                             ELSE users.status_id
-                                            END
+                                            END,
+                                updated_at = EXCLUDED.updated_at
                             RETURNING user_id;
                             '''
 
@@ -33,6 +36,8 @@ class UserRepository:
                 user.status_id,
                 user.created_at,
                 user.updated_at,
+                STATUS.REMOVED.value,
+                STATUS.ACTIVE.value
             )
 
             return query_result
@@ -96,17 +101,59 @@ class UserRepository:
 
             select_query = '''
                             UPDATE users
-                            SET status_id = 2
-                            WHERE user_id = $1 AND status_id = $2
+                            SET status_id = $1,
+                                org_id = NULL
+                            WHERE user_id = $2 AND status_id = $3
                             RETURNING user_id;
                            '''
             user_id = await self.connection.fetchval(
                 select_query,
+                STATUS.REMOVED.value,
                 user_id,
                 STATUS.ACTIVE.value
             )
 
             return user_id
+        
+    async def get_user_org(self, user_id: str) -> Optional[str]:
+
+        async with self.connection.transaction():
+            select_query = '''
+                            SELECT org_id
+                            FROM users
+                            WHERE user_id = $1 AND status_id = $2;
+                           '''
+            org_id = await self.connection.fetchval(
+                select_query,
+                user_id,
+                STATUS.ACTIVE.value
+            )
+
+            return org_id
+        
+    async def add_user_to_org(self, user_id:str, org_id:str):
+
+        async with self.connection.transaction(): 
+            user_org_insert_query = '''
+                                    UPDATE users
+                                    SET org_id = $1
+                                    WHERE user_id = $2 and status_id = $3;
+                                    '''
+
+            result = await self.connection.execute(
+                user_org_insert_query,
+                org_id,
+                user_id,
+                STATUS.ACTIVE.value
+            )
+
+            row_updated = int(result.split()[-1])
+
+            if row_updated == 0:
+                raise HTTPException(
+                    status_code = HTTP_404_NOT_FOUND,
+                    detail = "User not found or error updating user"
+                )
             
 
 async def get_user_repository(connection:Connection = Depends(get_db_connection)) -> UserRepository:

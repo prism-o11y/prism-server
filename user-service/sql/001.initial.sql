@@ -24,7 +24,7 @@ CREATE INDEX idx_org_name ON organizations (name);
 -- Now create users table
 CREATE TABLE users (
   user_id UUID PRIMARY KEY,         -- Application generated UUID
-  org_id UUID NOT NULL,             -- Foreign key to organizations table
+  org_id UUID NULL,             -- Foreign key to organizations table
   email VARCHAR(255) NOT NULL UNIQUE,      -- Consider a unique constraint if required
   status_id INT NOT NULL REFERENCES status_types(id),  -- Foreign key to status_types
   created_at TIMESTAMPTZ NOT NULL,  -- Manually generated, using UTC timestamps

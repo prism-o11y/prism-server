@@ -14,7 +14,7 @@ def entry() -> FastAPI:
         logging.info("Configuration loaded.")
     except ValidationError as e:
         logging.critical(f"Invalid configuration: {e}", exc_info=True)
-        exit(1)
+        raise
 
     rest_server = RestServer(config)
     return rest_server.get_app()

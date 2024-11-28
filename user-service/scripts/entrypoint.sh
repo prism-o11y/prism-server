@@ -8,8 +8,10 @@ echo "Detected ${NUM_CORES} CPU cores."
 echo "Starting the application with ${NUM_WORKERS} workers..."
 
 # Start Gunicorn
-gunicorn "src.main:entry()" \
+exec gunicorn "src.main:entry()" \
     -w "${NUM_WORKERS}" \
     -b "${SERVER_ADDR}" \
     -k src.config.server_config.HeadlessUvicornWorker \
-    --access-logfile -
+    --access-logfile - \
+    --log-level=info \
+    --capture-output

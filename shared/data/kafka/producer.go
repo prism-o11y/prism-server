@@ -18,11 +18,10 @@ type Producer struct {
 func NewProducer(brokers []string, topic string) *Producer {
 	return &Producer{
 		writer: &kafka.Writer{
-			Addr:  kafka.TCP(brokers...),
-			Topic: topic,
-			Balancer: &kafka.Murmur2Balancer{
-				Consistent: true,
-			},
+			Addr:      kafka.TCP(brokers...),
+			Topic:     topic,
+			BatchSize: 1,
+			Balancer: &kafka.ReferenceHash{},
 		},
 	}
 }

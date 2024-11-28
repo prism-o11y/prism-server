@@ -30,7 +30,7 @@ func NewHandler(eventSender *sse.EventSender, emailSender *smtp.EmailSender, pro
 		emailSender:     emailSender,
 		producerManager: producerManager,
 		consManager:     consManager,
-		nodeID:          nodeID + 1,
+		nodeID:          nodeID,
 	}
 }
 
@@ -128,28 +128,46 @@ func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("SSE connection established")
+	log.Info().
+		Str("client_id", clientID).
+		Str("connection_id", connectionID).
+		Msg("Client connection established")
 	<-client.DisconnectChan
-	log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("SSE connection closed")
+	log.Info().
+		Str("client_id", clientID).
+		Str("connection_id", connectionID).
+		Msg("Client connection closed")
 }
 
 func (h *Handler) handleSSENotification(notification *models.SSENotification) error {
+	if notification.IsForwarded {
+		if notification.TargetNodeID == fmt.Sprintf("%d", h.nodeID) {
+			return h.eventSender.SendEventToClient(notification.ClientID, notification)
+		}
+		return nil
+	}
+
 	exists, err := h.eventSender.CliManager.HasClient(notification.ClientID, fmt.Sprintf("%d", h.nodeID))
 	if err != nil {
 		return err
 	}
+
 	if exists {
 		return h.eventSender.SendEventToClient(notification.ClientID, notification)
 	}
+
 	return h.forwardMessageToNode(notification)
 }
 
 func (h *Handler) forwardMessageToNode(notification *models.SSENotification) error {
 	nodeID, err := h.eventSender.CliManager.GetNodeForClient(notification.ClientID)
 	if err != nil {
-		log.Error().Err(err).Str("client_id", notification.ClientID).Msg("Failed to get node for client")
 		return err
 	}
+
+	notification.TargetNodeID = nodeID
+	notification.OriginNodeID = fmt.Sprintf("%d", h.nodeID)
+	notification.IsForwarded = true
 
 	data, err := jsoniter.Marshal(notification)
 	if err != nil {
@@ -157,19 +175,22 @@ func (h *Handler) forwardMessageToNode(notification *models.SSENotification) err
 		return err
 	}
 
-	notifyData := models.NewNotificationWrapper(models.SSE, data)
-	msg, err := jsoniter.Marshal(notifyData)
+	wrapper := models.NewNotificationWrapper(models.SSE, data)
+	serializedMsg, err := jsoniter.Marshal(wrapper)
 	if err != nil {
-		log.Err(err).Str("client_id", notification.ClientID).Msg("Failed to marshal notification data")
+		log.Err(err).Str("client_id", notification.ClientID).Msg("Failed to marshal notification wrapper")
 		return err
 	}
 
-	key := []byte(fmt.Sprintf("%s:%s", nodeID, notification.ClientID))
-	if err := h.producerManager.Produce(kafka.TransferTopic, key, msg); err != nil {
+	key := []byte(fmt.Sprintf("%s:%s", notification.ClientID, notification.TargetNodeID))
+	if err := h.producerManager.Produce(kafka.TransferTopic, key, serializedMsg); err != nil {
 		return err
 	}
 
-	log.Info().Str("node_id", nodeID).Int("parent_id", h.nodeID).Msg("Message forwarded to node successfully")
+	log.Info().
+		Str("target_id", nodeID).
+		Int("origin_id", h.nodeID).
+		Msg("Event forwarded to node successfully")
 	return nil
 }
 

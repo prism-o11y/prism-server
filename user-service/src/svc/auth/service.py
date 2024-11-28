@@ -24,11 +24,11 @@ class Auth0Manager:
                 ),
             )
 
-            logging.info("Auth0 manage initialized.")
+            logging.info({"event":"Auth0 Manager Intialization", "status":"Success"})
         
         except Exception as e:
 
-            logging.error(f"Failed to initialize Auth0 manager: {e}", exc_info=True)
+            logging.exception({"event":"Auth0 Manager Intialization", "status":"Failed", "error":str(e)})
 
     
     async def get_decoded_token(self, id_token:str):
@@ -36,13 +36,9 @@ class Auth0Manager:
         decode_token = None
 
         try:
-
             jwks_url = self.config.AUTH0_JWKS_URL
-
             jwks_client = PyJWKClient(jwks_url)
-
             signing_key = jwks_client.get_signing_key_from_jwt(id_token)
-
             decode_token = jwt.decode(
                 id_token,
                 signing_key.key,
@@ -52,18 +48,14 @@ class Auth0Manager:
             )
         
         except jwt.ExpiredSignatureError as e:
-
-            logging.error(f"Token has expired: {e}")
-
+            logging.error({"event":"Token Decoding", "status":"Failed", "error":str(e)})
             return None
         
         except jwt.InvalidTokenError as e:
-
-            logging.error(f"Invalid token: {e}")
-
+            logging.error({"event":"Token Decoding", "status":"Failed", "error":str(e)})
             return None
         
-        logging.info("Successfully decoded token.")
+        logging.info({"event":"Token Decoding", "status":"Success"})
 
         return decode_token
     
@@ -83,7 +75,6 @@ class Auth0Manager:
         }
 
         async with httpx.AsyncClient() as client:
-
             response = await client.post(
                 access_token_url,
                 json=payload,
@@ -91,12 +82,11 @@ class Auth0Manager:
             )
 
             response.raise_for_status()
-
             data = response.json()
-
             return data.get("access_token")
         
-
+    def get_logout_url(self, return_url:str) -> str:
+        return self.config.AUTH0_LOGOUT_URL + f"&returnTo={return_url}"
 
 
 async def get_auth0_manager(request: Request) -> Auth0Manager:

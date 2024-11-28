@@ -1,0 +1,82 @@
+services:
+  user-service:
+    build: 
+      context: ./user-service
+      dockerfile: Dockerfile
+    env_file:
+      - assets/env/.env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - kafka
+
+  alert-noti-service-1:
+    build: 
+      context: .
+      dockerfile: alert-noti-service/Dockerfile
+    env_file:
+      - assets/env/.env
+    environment:
+      - SERVER_NODE=0
+    ports:
+      - "8001:8001"
+    depends_on:
+      - cache
+      - kafka
+
+  alert-noti-service-2:
+    build: 
+      context: .
+      dockerfile: alert-noti-service/Dockerfile
+    env_file:
+      - assets/env/.env
+    environment:
+      - SERVER_NODE=1
+    ports:
+      - "8002:8002"
+    depends_on:
+      - cache
+      - kafka
+
+  alert-noti-service-3:
+    build: 
+      context: .
+      dockerfile: alert-noti-service/Dockerfile
+    env_file:
+      - assets/env/.env
+    environment:
+      - SERVER_NODE=2
+    ports:
+      - "8003:8003"
+    depends_on:
+      - cache
+      - kafka
+
+  alert-noti-service-4:
+    build: 
+      context: .
+      dockerfile: alert-noti-service/Dockerfile
+    env_file:
+      - assets/env/.env
+    environment:
+      - SERVER_NODE=3
+    ports:
+      - "8004:8004"
+    depends_on:
+      - cache
+      - kafka
+
+  alert-noti-service-5:
+    build: 
+      context: .
+      dockerfile: alert-noti-service/Dockerfile
+    env_file:
+      - assets/env/.env
+    environment:
+      - SERVER_NODE=4
+    ports:
+      - "8005:8005"
+    depends_on:
+      - cache
+      - kafka

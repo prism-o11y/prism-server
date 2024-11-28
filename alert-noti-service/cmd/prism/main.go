@@ -14,7 +14,7 @@ import (
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/server"
 )
 
-func main() {
+func setLogger() {
 	level := zerolog.InfoLevel
 	_, ok := os.LookupEnv("ENVIRONMENT")
 	if ok {
@@ -27,6 +27,10 @@ func main() {
 		TimeFormat: time.ANSIC,
 	}
 	log.Logger = log.Output(logConfig).With().Caller().Logger()
+}
+
+func main() {
+	setLogger()
 
 	deps, err := depends.New()
 	if err != nil {
@@ -43,13 +47,11 @@ func main() {
 
 	go srv.Start(ctx)
 
-	log.Info().Msg("Service is running")
-
 	<-ctx.Done()
 	log.Info().Msg("Shutting down gracefully...")
 
 	if err := srv.Stop(); err != nil {
 		log.Fatal().Err(err).Msg("Failed to shut down server")
 	}
-	log.Info().Msg("Server stopped")
+	log.Info().Msg("Server stopped...")
 }

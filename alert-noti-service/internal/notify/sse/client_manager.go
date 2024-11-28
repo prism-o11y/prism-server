@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -41,10 +40,9 @@ func (cm *clientManager) AddClient(clientID, nodeID string, client *Client) (str
 		if err != lock.ErrNoLockFound {
 			return "", err
 		}
-		err := cm.distLock.Acquire(clientID, nodeID)
-		if err != nil {
+		if err := cm.distLock.Acquire(clientID, nodeID); err != nil {
 			if err == lock.ErrLockAlreadyHeld {
-				return "", fmt.Errorf("client %s is already connected to another node", clientID)
+				return "", err
 			}
 			return "", err
 		}
@@ -58,26 +56,25 @@ func (cm *clientManager) AddClient(clientID, nodeID string, client *Client) (str
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 
+	lockInterval := cm.distLock.GetRenewInterval()
+
 	if cm.ownerships[clientID] == nil {
-		log.Info().Str("client_id", clientID).Msg("Creating new client ownership")
 		lockCtx, lockCancel := context.WithCancel(context.Background())
 		cm.ownerships[clientID] = &clientOwnership{
 			connections: make(map[string]*Client),
 			lockCtx:     lockCtx,
 			lockCancel:  lockCancel,
 		}
-		go client.StartRenewLock(cm.distLock.GetRenewInterval(), lockCtx, cm.distLock)
-		log.Info().Str("client_id", clientID).Msg("Started lock renewal")
+		go client.StartRenewLock(lockInterval, lockCtx, cm.distLock)
 	}
 
 	connectionID := uuid.New().String()
 	client.ConnectionID = connectionID
 	cm.ownerships[clientID].connections[connectionID] = client
 
-	go client.StartHeartbeat(2*time.Minute, cm.distLock)
+	go client.StartHeartbeat(lockInterval * 2)
 	go client.WaitForDisconnection(cm, clientID, connectionID)
 
-	log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("Client added successfully")
 	return connectionID, nil
 }
 
@@ -93,13 +90,15 @@ func (cm *clientManager) RemoveClient(clientID, connectionID string) error {
 
 	client, exists := ownerships.connections[connectionID]
 	if !exists {
-		log.Warn().Str("client_id", clientID).Str("connection_id", connectionID).Msg("Connection ID not found during removal")
+		log.Warn().
+			Str("client_id", clientID).
+			Str("connection_id", connectionID).
+			Msg("Connection ID not found during removal")
 		return nil
 	}
 
 	client.Close()
 	delete(ownerships.connections, connectionID)
-	log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("Client removed successfully")
 
 	if len(ownerships.connections) == 0 {
 		ownerships.lockCancel()
@@ -107,7 +106,7 @@ func (cm *clientManager) RemoveClient(clientID, connectionID string) error {
 			log.Error().Err(err).Str("client_id", clientID).Msg("Failed to release lock after removing last client connection")
 			return err
 		}
-		log.Info().Str("client_id", clientID).Msg("Released lock after last connection closed")
+		log.Info().Str("client_id", clientID).Msg("No more client connections, lock released")
 		delete(cm.ownerships, clientID)
 	}
 
@@ -138,15 +137,18 @@ func (cm *clientManager) GetNodeForClient(clientID string) (string, error) {
 
 func (cm *clientManager) CloseAllClients() {
 	cm.mu.RLock()
-	owernshipsCopy := make(map[string]*clientOwnership, len(cm.ownerships))
+	ownershipsCopy := make(map[string]*clientOwnership, len(cm.ownerships))
 	for clientID, connections := range cm.ownerships {
-		owernshipsCopy[clientID] = connections
+		ownershipsCopy[clientID] = connections
 	}
 	cm.mu.RUnlock()
 
-	for clientID, ownerships := range owernshipsCopy {
+	for clientID, ownerships := range ownershipsCopy {
 		for connectionID, client := range ownerships.connections {
-			log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("Closing client connection")
+			log.Info().
+				Str("client_id", clientID).
+				Str("connection_id", connectionID).
+				Msg("Closing client connection")
 			client.Close()
 		}
 	}

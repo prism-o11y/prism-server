@@ -1,6 +1,14 @@
+<<<<<<< HEAD
 .env
 __pycache__
 __pycache__/*
 .vscode
 .python-version
+=======
+.env
+__pycache__
+__pycache__/*
+.vscode
+.python-version
+>>>>>>> sse/tuan/2
 venv

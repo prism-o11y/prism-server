@@ -34,7 +34,6 @@ func NewDistributedLock(client *redis.Client, ttl time.Duration) *DistributedLoc
 
 func (d *DistributedLock) Acquire(clientID, nodeID string) error {
 	key := d.getClientKey(clientID)
-
 	ok, err := d.client.SetNX(key, nodeID, d.ttl).Result()
 	if err != nil {
 		log.Error().Err(err).Str("client_id", clientID).Msg("Failed to acquire lock")
@@ -44,34 +43,24 @@ func (d *DistributedLock) Acquire(clientID, nodeID string) error {
 		log.Warn().Str("client_id", clientID).Msg("Lock already held by another node")
 		return ErrLockAlreadyHeld
 	}
-
-	log.Info().Str("client_id", clientID).Str("node_id", nodeID).Msg("Lock acquired")
 	return nil
 }
 
 func (d *DistributedLock) Release(clientID string) error {
 	key := d.getClientKey(clientID)
-
-	_, err := d.client.Del(key).Result()
-	if err != nil {
+	if _, err := d.client.Del(key).Result(); err != nil {
 		log.Error().Err(err).Str("client_id", clientID).Msg("Failed to release lock")
 		return ErrFailedToReleaseLock
 	}
-
-	log.Info().Str("client_id", clientID).Msg("Lock released")
 	return nil
 }
 
 func (d *DistributedLock) Renew(clientID string) error {
 	key := d.getClientKey(clientID)
-
-	_, err := d.client.Expire(key, d.ttl).Result()
-	if err != nil {
+	if _, err := d.client.Expire(key, d.ttl).Result(); err != nil {
 		log.Error().Err(err).Str("client_id", clientID).Msg("Failed to renew lock")
 		return ErrFailedToRenewLock
 	}
-
-	log.Info().Str("client_id", clientID).Msg("Lock renewed successfully")
 	return nil
 }
 
@@ -80,7 +69,6 @@ func (d *DistributedLock) GetNodeForClient(clientID string) (string, error) {
 
 	nodeID, err := d.client.Get(key).Result()
 	if err == redis.Nil {
-		log.Warn().Str("client_id", clientID).Msg("No lock found for client")
 		return "", ErrNoLockFound
 	}
 	if err != nil {

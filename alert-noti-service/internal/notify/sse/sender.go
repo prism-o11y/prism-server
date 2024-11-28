@@ -43,7 +43,7 @@ func (es *EventSender) SendEventToClient(clientID string, notification *models.S
 		return fmt.Errorf("failed to send events to some clients")
 	}
 
-	log.Info().Str("client_id", notification.ClientID).Msg("Event sent to clients successfully")
+	log.Info().Str("client_id", notification.ClientID).Msg("Event sent to client successfully")
 	return nil
 }
 

@@ -77,10 +77,8 @@ func (c *Client) SendEvent(eventID, eventType, data string) error {
 func (c *Client) WaitForDisconnection(cm *clientManager, clientID, connectionID string) {
 	select {
 	case <-c.DisconnectChan:
-		log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("Client disconnected")
 		cm.RemoveClient(clientID, connectionID)
 	case <-c.Context.Done():
-		log.Info().Str("client_id", clientID).Str("connection_id", connectionID).Msg("Client context done")
 		cm.RemoveClient(clientID, connectionID)
 	}
 }
@@ -92,7 +90,7 @@ func (c *Client) Close() {
 	})
 }
 
-func (c *Client) StartHeartbeat(interval time.Duration, lock *lock.DistributedLock) {
+func (c *Client) StartHeartbeat(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 

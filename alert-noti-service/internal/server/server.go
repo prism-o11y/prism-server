@@ -71,7 +71,10 @@ func (s *Server) routes() {
 func (s *Server) Start(ctx context.Context) {
 	brokers := []string{s.deps.Config.Databases.KafkaAddress}
 	topics := []string{kafka.NotifyTopic, kafka.TransferTopic}
-	groups := []string{kafka.NotifyGroupID, kafka.TransferGroupID}
+	groups := []string{
+		kafka.NotifyGroupID,
+		fmt.Sprintf("transfer-group-node%d", s.deps.Config.Server.NodeID),
+	}
 	timeOut := 10 * time.Second
 	go s.deps.NotifyHandler.StartConsumers(ctx, brokers, topics, groups, timeOut)
 

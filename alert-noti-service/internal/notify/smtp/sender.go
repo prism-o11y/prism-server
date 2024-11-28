@@ -1,5 +1,3 @@
-// alert-noti-service/internal/notify/smtp/sender.go
-
 package smtp
 
 import (

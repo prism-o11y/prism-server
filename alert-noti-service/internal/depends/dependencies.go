@@ -1,5 +1,3 @@
-// alert-noti-service/internal/depends/dependencies.go
-
 package depends
 
 import (

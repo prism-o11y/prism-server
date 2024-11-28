@@ -22,8 +22,6 @@ class UserService:
         jwt = await self.jwt_manager.encode(result, auth0_sub)
         return jwt
 
-
-
     async def produce_new_user(self, user: User):
 
         data = model.UserData(

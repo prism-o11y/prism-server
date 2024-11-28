@@ -6,15 +6,18 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from ..config.base_config import BaseConfig
 from ..config.kafka_config import KafkaConfig
 from ..svc.user.service import UserService
+from ..svc.org.service import OrgService
+from ..svc.org.models import Org
 from ..svc.user.models import User
 from . import model
 
 class KafkaConsumerService:
-    def __init__(self, kafka_config: KafkaConfig, user_service: UserService):
+    def __init__(self, kafka_config: KafkaConfig, user_service: UserService, org_service: OrgService):
         self.broker = kafka_config.BROKER
         self.topic = kafka_config.TOPICS
         self.group_id = kafka_config.CONSUMER_GROUPS
         self.user_service = user_service
+        self.org_service = org_service
         self.user_consumer = None
         self.task = None
 
@@ -77,25 +80,40 @@ class KafkaConsumerService:
     async def process_event(self, event_data: model.EventData):
 
         if event_data.source == model.SourceType.USER_SERVICE:
-            user_data = model.UserData.decode_data(event_data.data)
-            logging.info({"event": "Process-message", "action": user_data.action, "status": "Processing"})
+            data = model.Data.decode_data(event_data.data)
+            logging.info({"event": "Process-message", "action": data.action, "status": "Processing"})
 
-            if user_data:
-                match user_data.action:
+            if data:
+                match data.action:
 
                     case model.Action.INSERT_USER:
-                        user = User(**user_data.user_data)
+                        user = User(**data.data)
                         await self.user_service.insert_user(user)
 
                     case model.Action.UPDATE_USER:
                         pass
 
                     case model.Action.DELETE_USER:
-                        await self.user_service.delete_user(user_id=user_data.user_data.get("user_id"))
+                        await self.user_service.delete_user(user_id=data.data.get("user_id"))
+
+                    case model.Action.INSERT_ORG:
+                        await self.org_service.create_org(name = data.data.get("name"), token = data.data.get("token"))
+
+                    case model.Action.UPDATE_ORG:
+                        pass
+
+                    case model.Action.DELETE_ORG:
+                        await self.org_service.delete_org(token = data.data.get("token"))
+
+                    case model.Action.ADD_USER_TO_ORG:
+                        await self.org_service.add_user_to_org(new_user_email = data.data.get("email"), token = data.data.get("token"))
+
+                    case model.Action.REMOVE_USER_FROM_ORG:
+                        await self.org_service.remove_user_from_org(token = data.data.get("token"))
 
                     case _:
-                        logging.warning({"event": "Process-message", "action": user_data.action, "status": "Unhandled"})
+                        logging.warning({"event": "Process-message", "action": data.action, "status": "Unhandled"})
             else:
-                logging.error({"event": "Process-message", "action": user_data.action, "status": "User Data Decode Failed"})
+                logging.error({"event": "Process-message", "action": data.action, "status": "User Data Decode Failed"})
         else:
-            logging.warning({"event": "Process-message", "source": event_data.source, "status": "Unhandled"})
+            logging.warning({"event": "Process-message", "source": data.source, "status": "Unhandled"})

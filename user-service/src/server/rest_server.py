@@ -11,6 +11,7 @@ from src.database.postgres import PostgresManager
 from src.svc.auth.service import Auth0Manager
 from src.kafka.producer import KafkaProducerService
 from src.kafka.consumer import KafkaConsumerService
+from src.svc.org.service import OrgService
 from src.svc.user.service import UserService
 
 class RestServer:
@@ -71,9 +72,15 @@ class RestServer:
             jwt_manager
         )
 
+        org_svc: OrgService = OrgService(
+            postgres_manager,
+            kafka_producer,
+        )
+
         kafka_consumer: KafkaConsumerService = KafkaConsumerService(
             self.config.KAFKA,
             user_svc,
+            org_svc
         )
         app.state.kafka_consumer = kafka_consumer
         await kafka_consumer.start_user_consumer()

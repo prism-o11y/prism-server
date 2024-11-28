@@ -18,7 +18,6 @@ class OrgService:
         self.kafka_producer:KafkaProducerService = kafka_producer
         self.base_config:BaseConfig = get_base_config()
 
-
     async def produce_org_request(self, data:dict, user_id, action:str ,email:str = None):
 
         data = model.Data(

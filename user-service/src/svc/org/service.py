@@ -17,36 +17,6 @@ class OrgService:
         self.postgres_manager:PostgresManager = postgres_manager
         self.kafka_producer:KafkaProducerService = kafka_producer
         self.base_config:BaseConfig = get_base_config()
-    
-    async def produce_create_org(self, name:str, token:dict):
-
-        data = model.Data(
-            action= model.Action.INSERT_ORG,
-            data = {
-                "name": name,
-                "token": token
-            }
-        ).model_dump_json().encode("utf-8")
-
-        message = model.EventData(
-            source = model.SourceType.USER_SERVICE,
-            data = data,
-            email = None,
-            user_id = token.get("user_id")
-        )
-
-        try:
-
-            await self.kafka_producer.enqueue_message(
-                topic = self.base_config.KAFKA.TOPICS.get("user"),
-                key = str(token.get("user_id")),
-                value = message.model_dump_json().encode("utf-8")
-            )
-            
-            logging.info({"event": "Produce-Message", "org": name, "status": "Produced"})
-
-        except Exception as e:
-            logging.error({"event": "Produce-Message", "org": name, "status": "Failed", "error": str(e)})
 
 
     async def produce_org_request(self, data:dict, user_id, action:str ,email:str = None):
@@ -132,6 +102,20 @@ class OrgService:
             org = Org(**dict(result))
             return org.model_dump_json()
         
+
+    async def get_all_orgs(self):
+        
+        async with self.postgres_manager.get_connection() as connection:
+            user_repo = UserRepository(connection)
+            org_repo = OrgRepository(connection, user_repo)
+            result = await org_repo.get_all_orgs()
+            if not result:
+                return None
+            
+            orgs = [Org(**dict(org)).model_dump() for org in result]
+
+            return orgs
+        
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
     async def delete_org(self, token: dict):
         user_id = token.get("user_id")        
@@ -149,7 +133,7 @@ class OrgService:
                 
             org_repo = OrgRepository(connection, user_repo)
             await org_repo.delete_org(user.org_id)
-            await org_repo.remove_user_from_org(user_id)
+            await org_repo.remove_users_from_org(user.org_id)
 
     async def update_org(self):
         pass

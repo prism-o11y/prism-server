@@ -94,6 +94,17 @@ class UserRepository:
             )
 
             return user_id
+        
+    async def get_all_users(self):
+
+        async with self.connection.transaction():
+
+            select_query = '''
+                            SELECT user_id, org_id, email, status_id, created_at, updated_at, last_login
+                            FROM users;
+                           '''
+            rows = await self.connection.fetch(select_query)
+            return rows
 
     async def delete_user(self, user_id):
 

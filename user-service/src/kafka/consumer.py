@@ -3,21 +3,21 @@ import asyncio
 import logging
 from aiokafka import AIOKafkaConsumer
 from tenacity import retry, stop_after_attempt, wait_exponential
-from ..config.base_config import BaseConfig
 from ..config.kafka_config import KafkaConfig
 from ..svc.user.service import UserService
 from ..svc.org.service import OrgService
-from ..svc.org.models import Org
 from ..svc.user.models import User
+from ..svc.apps.service import AppService
 from . import model
 
 class KafkaConsumerService:
-    def __init__(self, kafka_config: KafkaConfig, user_service: UserService, org_service: OrgService):
+    def __init__(self, kafka_config: KafkaConfig, user_service: UserService, org_service: OrgService, app_service: AppService):
         self.broker = kafka_config.BROKER
         self.topic = kafka_config.TOPICS
         self.group_id = kafka_config.CONSUMER_GROUPS
         self.user_service = user_service
         self.org_service = org_service
+        self.app_service = app_service
         self.user_consumer = None
         self.task = None
 
@@ -110,6 +110,9 @@ class KafkaConsumerService:
 
                     case model.Action.REMOVE_USER_FROM_ORG:
                         await self.org_service.remove_user_from_org(token = data.data.get("token"))
+
+                    case model.Action.INSERT_APP:
+                        await self.app_service.create_app(name = data.data.get("app_name"), url = data.data.get("app_url"), token = data.data.get("token"))
 
                     case _:
                         logging.warning({"event": "Process-message", "action": data.action, "status": "Unhandled"})

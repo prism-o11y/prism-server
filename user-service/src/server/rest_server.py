@@ -13,6 +13,7 @@ from src.kafka.producer import KafkaProducerService
 from src.kafka.consumer import KafkaConsumerService
 from src.svc.org.service import OrgService
 from src.svc.user.service import UserService
+from src.svc.apps.service import AppService
 
 class RestServer:
     def __init__(self, config: BaseConfig) -> None:
@@ -77,11 +78,18 @@ class RestServer:
             kafka_producer,
         )
 
+        app_svc: AppService = AppService(
+            postgres_manager,
+            kafka_producer
+        )
+
         kafka_consumer: KafkaConsumerService = KafkaConsumerService(
             self.config.KAFKA,
             user_svc,
-            org_svc
+            org_svc,
+            app_svc
         )
+        
         app.state.kafka_consumer = kafka_consumer
         await kafka_consumer.start_user_consumer()
 

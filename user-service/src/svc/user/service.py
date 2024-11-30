@@ -149,6 +149,21 @@ class UserService:
             
             else:
                 return str(result)
+            
+    async def get_all_users(self) -> list[User]:
+
+        async with self.postgres_manager.get_connection() as connection:
+
+            user_repo = UserRepository(connection)
+
+            rows = await user_repo.get_all_users()
+
+            if not rows:
+                return None
+            
+            else:
+                users = [User(**dict(user)).model_dump() for user in rows]
+                return users
 
 
 async def get_user_service(

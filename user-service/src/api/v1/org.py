@@ -3,7 +3,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERR
 from ...jwt.service import get_jwt_manager, JWTManager
 from ...svc.org.service import OrgService, get_org_service
 from fastapi.responses import JSONResponse
-import json, logging
+import json, logging, uuid, datetime as dt
 from ...kafka.model import Action
 
 _router = APIRouter(prefix="/org")
@@ -162,7 +162,11 @@ async def delete_org(request:Request,
     if not jwt:
         return JSONResponse(
             status_code=HTTP_401_UNAUTHORIZED, 
-            content={"message": "User not authenticated"}
+            content = {
+                "status":"Failed",
+                "message": "User not authenticated",
+                "data": None
+            }
         )
 
     is_valid,token = await jwt_manager.validate_jwt(jwt)
@@ -317,6 +321,48 @@ async def get_org_by_name(request:Request,
     
     except Exception as e:
         logging.exception({"event": "Get-Org-By-Name", "status": "Failed", "error": str(e)})
+        return JSONResponse(
+            status_code = HTTP_500_INTERNAL_SERVER_ERROR,
+            content = {
+                "status":"Failed",
+                "message":"Internal server error",
+                "data": None
+            }
+        )
+    
+
+@_router.get("/get-all-orgs", name="org:get-all-orgs")
+async def get_all_orgs(org_service: OrgService = Depends(get_org_service)):
+    
+    try:
+        orgs = await org_service.get_all_orgs()
+
+        if not orgs:
+            return JSONResponse(
+                status_code = HTTP_404_NOT_FOUND,
+                content = {
+                    "status":"Failed",
+                    "message":"No organizations found",
+                    "data": None
+                }
+            )
+        
+        org_serialized = [
+            {key: str(value) if isinstance(value, (uuid.UUID, dt.datetime)) else value for key, value in row.items()}  
+            for row in orgs
+        ]
+        
+        return JSONResponse(
+            status_code = HTTP_200_OK,
+            content = {
+                "status":"Success",
+                "message":"Organizations found",
+                "data": org_serialized
+            }
+        )
+    
+    except Exception as e:
+        logging.exception({"event": "Get-All-Orgs", "status": "Failed", "error": str(e)})
         return JSONResponse(
             status_code = HTTP_500_INTERNAL_SERVER_ERROR,
             content = {

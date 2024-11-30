@@ -76,6 +76,8 @@ class OrgRepository:
         
         await self.user_repo.add_user_to_org(user.user_id, org_id)
 
+        logging.info({"event": "Add-User-To-Org", "email": new_user_email, "status": "Success"})
+
 
     async def remove_user_from_org(self, user_id:str):
         org_id = await self.user_repo.get_user_org(user_id)
@@ -148,10 +150,45 @@ class OrgRepository:
                 return
             
             logging.info({"event": "Delete-Org", "org_id": org_id, "status": "Success"})
+
+    async def remove_users_from_org(self, org_id:str):
+        async with self.connection.transaction():
+            
+            query = '''
+                    UPDATE users
+                    SET org_id = NULL
+                    WHERE org_id = $1;
+                    '''
+            
+            result = await self.connection.execute(
+                query, 
+                org_id
+            )
+
+            row_updated = int(result.split()[-1])
+            if row_updated == 0:
+                logging.error({"event": "Remove-Users-From-Org", "org_id": org_id, "status": "Failed", "error": "Org not found"})
+                return
+            
+            logging.info({"event": "Remove-Users-From-Org", "org_id": org_id, "status": "Success"})
     
     async def update_org(self):
         async with self.connection.transaction():
             pass
+
+    async def get_all_orgs(self):
+        async with self.connection.transaction():
+            
+            query = '''
+                    SELECT org_id, name, status_id, created_at, updated_at
+                    FROM organizations 
+                    '''
+            
+            orgs = await self.connection.fetch(
+                query
+            )
+
+            return orgs
 
 
     

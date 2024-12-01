@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	jsoniter "github.com/json-iterator/go"
@@ -97,6 +98,19 @@ func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	client, err := sse.NewClient(clientID, w, r.Context())
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to create client")
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	connectionID, err := h.eventSender.CliManager.AddClient(clientID, fmt.Sprintf("%d", h.nodeID), client)
+	if err != nil {
+		h.handleClientConnectRedirect(w, r, clientID)
+		return
+	}
+
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
@@ -110,24 +124,6 @@ func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	flusher.Flush()
 
-	client, err := sse.NewClient(clientID, w, r.Context())
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to create client")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	connectionID, err := h.eventSender.CliManager.AddClient(clientID, fmt.Sprintf("%d", h.nodeID), client)
-	if err != nil {
-		if err.Error() == fmt.Sprintf("client %s is already connected to another node", clientID) {
-			http.Error(w, "Client is connected to another node", http.StatusConflict)
-			return
-		}
-		log.Error().Err(err).Msg("Failed to add client")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
 	log.Info().
 		Str("client_id", clientID).
 		Str("connection_id", connectionID).
@@ -137,6 +133,29 @@ func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 		Str("client_id", clientID).
 		Str("connection_id", connectionID).
 		Msg("Client connection closed")
+}
+
+func (h *Handler) handleClientConnectRedirect(w http.ResponseWriter, r *http.Request, clientID string) {
+	nodeID, err := h.eventSender.CliManager.GetNodeForClient(clientID)
+	if err != nil {
+		http.Error(w, "Failed to get node for client", http.StatusInternalServerError)
+		return
+	}
+
+	nodeIDInt, err := strconv.Atoi(nodeID)
+	if err != nil {
+		http.Error(w, "Failed to parse node ID", http.StatusInternalServerError)
+		return
+	}
+
+	redirectURL := fmt.Sprintf("http://localhost:%d/events?client_id=%s", 8001+nodeIDInt, clientID)
+	log.Info().
+		Str("client_id", clientID).
+		Str("target_id", nodeID).
+		Int("origin_id", h.nodeID).
+		Str("redirect_url", redirectURL).
+		Msg("Redirecting client")
+	http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
 }
 
 func (h *Handler) handleSSENotification(notification *models.SSENotification) error {
@@ -200,6 +219,8 @@ func (h *Handler) TestNotifyEndpoint(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
+
+	notification.Message = fmt.Sprintf("Test notification from node %d", h.nodeID)
 	if err := h.handleSSENotification(notification); err != nil {
 		http.Error(w, "Failed to handle notification", http.StatusInternalServerError)
 		return

@@ -21,7 +21,6 @@ func NewProducer(brokers []string, topic string) *Producer {
 			Addr:      kafka.TCP(brokers...),
 			Topic:     topic,
 			BatchSize: 1,
-			Balancer: &kafka.ReferenceHash{},
 		},
 	}
 }

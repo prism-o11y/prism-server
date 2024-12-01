@@ -1,0 +1,5 @@
+{
+    "client_id": "test-client",
+    "severity": "INFO",
+    "message": "Hello SSE"
+}

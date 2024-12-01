@@ -10,6 +10,9 @@ services:
     depends_on:
       - db
       - kafka
+      - consul
+    environment:
+      - CONSUL_HTTP_ADDR=consul:8500
 
   alert-noti-service-1:
     build: 
@@ -19,11 +22,13 @@ services:
       - assets/env/.env
     environment:
       - SERVER_NODE=0
+      - CONSUL_HTTP_ADDR=consul:8500
     ports:
       - "8001:8001"
     depends_on:
       - cache
       - kafka
+      - consul
 
   alert-noti-service-2:
     build: 
@@ -33,12 +38,13 @@ services:
       - assets/env/.env
     environment:
       - SERVER_NODE=1
+      - CONSUL_HTTP_ADDR=consul:8500
     ports:
       - "8002:8002"
     depends_on:
       - cache
       - kafka
-
+      - consul
   alert-noti-service-3:
     build: 
       context: .
@@ -47,6 +53,7 @@ services:
       - assets/env/.env
     environment:
       - SERVER_NODE=2
+      - CONSUL_HTTP_ADDR=consul:8500
     ports:
       - "8003:8003"
     depends_on:
@@ -61,6 +68,7 @@ services:
       - assets/env/.env
     environment:
       - SERVER_NODE=3
+      - CONSUL_HTTP_ADDR=consul:8500
     ports:
       - "8004:8004"
     depends_on:
@@ -75,6 +83,7 @@ services:
       - assets/env/.env
     environment:
       - SERVER_NODE=4
+      - CONSUL_HTTP_ADDR=consul:8500
     ports:
       - "8005:8005"
     depends_on:

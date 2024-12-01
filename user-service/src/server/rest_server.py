@@ -18,7 +18,7 @@ from src.svc.apps.service import AppService
 class RestServer:
     def __init__(self, config: BaseConfig) -> None:
         self._app = FastAPI(
-            root_path="/api",
+            root_path="/",
             title=config.SERVER.NAME,
             version=config.SERVER.VERSION,
             lifespan=self.lifespan_context,

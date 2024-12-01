@@ -61,8 +61,3 @@ class Action(StrEnum):
     INSERT_APP = "insert_app"
     UPDATE_APP = "update_app"
     DELETE_APP = "delete_app"
-    ADD_USER_TO_APP = "add_user_to_app"
-    REMOVE_USER_FROM_APP = "remove_user_from_app"
-    GET_ALL_USERS = "get_all_users"
-    GET_ALL_ORGS = "get_all_orgs"
-    GET_ALL_APPS = "get_all_apps"

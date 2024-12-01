@@ -5,7 +5,7 @@ from src.api.v1.org import _router as org_router
 from src.api.v1.app import _router as application_router
 
 def new_v1_router() -> APIRouter:
-    router = APIRouter(prefix="/v1")
+    router = APIRouter()
     router.include_router(auth_router)
     router.include_router(user_router)
     router.include_router(org_router)

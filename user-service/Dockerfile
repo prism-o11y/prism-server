@@ -11,7 +11,7 @@ WORKDIR /src/user-service
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    && rm -rf /var/lib/apt/lists/*
+    bash && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY requirements.txt .
@@ -21,19 +21,20 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application code
 COPY . .
 
-# **Ensure the following steps run as root**
-
 # Copy the entrypoint script
 COPY scripts/entrypoint.sh /entrypoint.sh
+
+# Convert line endings to Unix format using sed
+RUN sed -i 's/\r$//' /entrypoint.sh
 
 # Make the entrypoint script executable
 RUN chmod +x /entrypoint.sh
 
-# switch to a non-root user after setting up permissions
+# Switch to a non-root user after setting up permissions
 RUN addgroup --system appgroup && adduser --system appuser --ingroup appgroup
 
-# Change ownership of the app directory
-RUN chown -R appuser:appgroup /src/user-service
+# Change ownership of the app directory and entrypoint script
+RUN chown -R appuser:appgroup /src/user-service /entrypoint.sh
 
 # Switch to the non-root user
 USER appuser

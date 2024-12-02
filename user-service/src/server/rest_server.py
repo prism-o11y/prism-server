@@ -84,6 +84,10 @@ class RestServer:
             kafka_producer
         )
 
+        sse_svc: SSEService = SSEService(
+            kafka_producer
+        )
+
         app_svc: AppService = AppService(
             postgres_manager,
             kafka_producer,

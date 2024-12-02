@@ -31,15 +31,15 @@ class EventData(BaseModel):
             logging.exception(f"Error in data validation: {e}")
             return None
 
-class UserData(BaseModel):
+class Data(BaseModel):
     action: str
-    user_data: dict
+    data: dict
 
     @classmethod
-    def decode_data(cls, data: bytes) -> "UserData":
+    def decode_data(cls, data: bytes) -> "Data":
         try:
             kafka_data_dict = json.loads(data.decode("utf-8"))
-            return UserData(**kafka_data_dict)
+            return Data(**kafka_data_dict)
         
         except json.JSONDecodeError as e:
             logging.exception(f"Failed to decode KafkaData JSON: {e}")
@@ -53,3 +53,11 @@ class Action(StrEnum):
     INSERT_USER = "insert_user"
     UPDATE_USER = "update_user"
     DELETE_USER = "delete_user"
+    INSERT_ORG = "insert_org"
+    UPDATE_ORG = "update_org"
+    DELETE_ORG = "delete_org"
+    ADD_USER_TO_ORG = "add_user_to_org"
+    REMOVE_USER_FROM_ORG = "remove_user_from_org"
+    INSERT_APP = "insert_app"
+    UPDATE_APP = "update_app"
+    DELETE_APP = "delete_app"

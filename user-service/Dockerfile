@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Set work directory
-WORKDIR /app
+WORKDIR /src/user-service
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -34,7 +34,7 @@ RUN chmod +x /entrypoint.sh
 RUN addgroup --system appgroup && adduser --system appuser --ingroup appgroup
 
 # Change ownership of the app directory and entrypoint script
-RUN chown -R appuser:appgroup /app /entrypoint.sh
+RUN chown -R appuser:appgroup /src/user-service /entrypoint.sh
 
 # Switch to the non-root user
 USER appuser

@@ -14,18 +14,16 @@ class AppRepository:
         async with self.connection.transaction():
 
             query = '''
-                    INSERT INTO applications(app_id,org_id, app_name, app_url, created_at, updated_at)
-                    VALUES($1,$2,$3,$4,$5,$6)
+                    UPDATE applications
+                    SET app_name = $1, updated_at = $2
+                    WHERE app_id = $3
                     '''
             
             await self.connection.execute(
                 query,
-                app.app_id,
-                app.org_id,
                 app.app_name,
-                app.app_url,
-                app.created_at,
                 app.updated_at,
+                app.app_id,
             )
             
         return True, "App created successfully"

@@ -1,14 +1,14 @@
 from asyncpg.connection import Connection
 import logging
 from .models import Application
+from ..sse.models import AlertSeverity
 from asyncpg import UniqueViolationError
 class AppRepository:
 
     def __init__(self, connection) -> None:
         self.connection:Connection = connection
 
-
-    async def create_app(self, app:Application):
+    async def create_app(self, app:Application) -> tuple[bool, str]:
         try:
             
             async with self.connection.transaction():
@@ -28,19 +28,21 @@ class AppRepository:
                     app.updated_at,
                 )
 
+
                 row_updated = int(result.split(" ")[-1])
                 if row_updated == 0:
                     logging.error({"event": "Create-App", "app": app.app_name, "status": "Failed", "error": "Failed to create app"})
-                    return
+                    return False, "Failed to create app"
+
                 
         except UniqueViolationError as e:
             logging.error({"event": "Create-App", "app": app.app_name, "status": "Failed", "error": str(e)})
-            return
+            return False, "App already exists"
             
-        logging.info({"event": "Create-App", "app": app.app_name, "status": "Success"})
+        return True, "App created successfully"
 
     
-    async def update_app(self, app:Application):
+    async def update_app(self, app:Application) -> tuple[bool, str]:
 
         async with self.connection.transaction():
 
@@ -60,12 +62,14 @@ class AppRepository:
             row_updated = int(result.split(" ")[-1])
             if row_updated == 0:
                 logging.error({"event": "Update-App", "app": app.app_name, "status": "Failed", "error": "Failed to update app"})
-                return
-            
+                return False, "Failed to update app or app not found"
+        
         logging.info({"event": "Update-App", "app": app.app_name, "status": "Success"})
 
+        return True, "App updated successfully"
 
-    async def delete_app(self, app_id):
+
+    async def delete_app(self, app_id) -> tuple[bool, str]:
 
         async with self.connection.transaction():
 
@@ -82,9 +86,11 @@ class AppRepository:
             row_updated = int(result.split(" ")[-1])
             if row_updated == 0:
                 logging.error({"event": "Delete-App", "app_id": app_id, "status": "Failed", "error": "Failed to delete app"})
-                return
+                return False, "Failed to delete app or app not found"
             
         logging.info({"event": "Delete-App", "app_id": app_id, "status": "Success"})
+
+        return True, "App deleted successfully"
 
     
     async def get_app_by_id(self, app_id):

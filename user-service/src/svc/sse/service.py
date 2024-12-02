@@ -13,15 +13,15 @@ class SSEService:
         try:
             
             sse_notification = SSENotification(
-                ClientID = client_id,
-                Severity = severity,
-                Message = message,
-                DateTime = dt.datetime.now(dt.timezone.utc),
+                client_id = client_id,
+                severity = severity,
+                message = message,
+                dateTime = dt.datetime.now(dt.timezone.utc),
             ).model_dump()
 
             notifWrapper = NotificationWrapper(
-                Action = Action.SSE,
-                Data = sse_notification
+                action = Action.SSE,
+                data = sse_notification
             ).model_dump_json().encode('utf-8')
 
             await self.kafka_producer.enqueue_message(

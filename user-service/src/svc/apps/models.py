@@ -22,3 +22,4 @@ class Application(BaseModel):
             created_at = now,
             updated_at = now,
         )
+    

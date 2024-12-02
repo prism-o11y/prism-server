@@ -234,8 +234,10 @@ async def get_app_by_user_id(request:Request,
             }
         ) 
 
-    app = await app_service.get_app_by_user_id(token)
-    if not app:
+    apps = await app_service.get_app_by_user_id(token)
+
+
+    if not apps:
         return JSONResponse(
             status_code = HTTP_404_NOT_FOUND,
             content = {
@@ -244,12 +246,17 @@ async def get_app_by_user_id(request:Request,
                 "data": None
             }
         )
+    apps_serialized = [
+            {key: str(value) if isinstance(value, (uuid.UUID, dt.datetime)) else value for key, value in row.items()}  
+            for row in apps
+    ]
+    
     return JSONResponse(
         status_code = HTTP_200_OK,
         content = {
             "status":"Success",
             "message": "App found",
-            "data": json.loads(app)
+            "data": apps_serialized
         }
     )
 

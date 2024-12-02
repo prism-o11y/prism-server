@@ -10,13 +10,13 @@ class AlertSeverity(StrEnum):
 
 
 class SSENotification(BaseModel):
-    ClientID: str
-    Severity: AlertSeverity
-    Message: str
-    DateTime: dt.datetime
-    TargetNodeID: Optional[str] = None
-    OriginNodeID: Optional[str] = None
-    IsForwarded: Optional[bool] = None
+    client_id: str
+    severity: AlertSeverity
+    message: str
+    dateTime: dt.datetime
+    target_node_id: Optional[str] = None
+    origin_node_id: Optional[str] = None
+    is_forwarded: Optional[bool] = None
 
 
 class Action(StrEnum):
@@ -25,8 +25,12 @@ class Action(StrEnum):
 
 
 class NotificationWrapper(BaseModel):
-    Action: Action
-    Data: Dict[str, Any]
+    action: Action
+    data: Dict[str, Any]
 
     class Config:
         arbitrary_types_allowed = True
+
+class SSEClients(StrEnum):
+    TEST_CLIENT = "test-client"
+    USER-SERVICE = "user-service"

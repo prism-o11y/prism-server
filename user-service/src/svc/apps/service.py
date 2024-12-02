@@ -3,7 +3,7 @@ from ...config.base_config import BaseConfig, get_base_config
 from ...database.postgres import PostgresManager, get_postgres_manager
 from ...svc.user.repository import UserRepository
 from ...svc.user.models import User
-from ...svc.sse.models import SSENotification, AlertSeverity
+from ...svc.sse.models import SSEClients, AlertSeverity
 from fastapi import Depends
 from ...kafka import model
 from .models import Application
@@ -56,40 +56,54 @@ class AppService:
             result = await user_repo.get_user_by_id(user_id)
 
             if not result:
-                logging.error({"event": "Create-App", "status": "Failed", "error": "User not found"})
+                await self.sse_service.process_sse_message(
+                    message = "User not found",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Critical
+                )
                 return
-
-                # await self.sse_service.process_sse_message(
-                #     message = "User not found",
-                #     client_id = "test-client",
-                #     severity = AlertSeverity.Critical
-                # )
-
             
+
             user = User(**dict(result))
 
             if not user.org_id:
-                logging.error({"event": "Create-App", "status": "Failed", "error": "User not associated with any org"})
+                await self.sse_service.process_sse_message(
+                    message = "User not associated with any org",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Critical
+                )
                 return
-
-                # await self.sse_service.process_sse_message(
-                #     message = "User not associated with any org",
-                #     client_id = "test-client",
-                #     severity = AlertSeverity.Critical
-                # )
-
-            
-            app = await self.generate_app(user.org_id, name, url)
 
             app_repo = AppRepository(connection)
 
-            await app_repo.create_app(app)
+            app = app_repo.get_app_by_name_and_url(name, url)
+            if app:
+                await self.sse_service.process_sse_message(
+                    message = "App already exists",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+  
+            app = await self.generate_app(user.org_id, name, url)
 
-            # await self.sse_service.process_sse_message(
-            #     message = "App created",
-            #     client_id = "test-client",
-            #     severity = AlertSeverity.Info
-            # )
+            created, message = await app_repo.create_app(app)
+            
+            if created:
+
+                await self.sse_service.process_sse_message(
+                    message = message,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Info
+                )
+            
+            else:
+
+                await self.sse_service.process_sse_message(
+                    message = message,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
 
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
     async def update_app(self, app_name: str, app_url: str, token: dict):
@@ -100,13 +114,31 @@ class AppService:
             app_repo = AppRepository(connection)
             app = await app_repo.get_app_by_user_id_and_url(user_id, app_url)
             if not app:
-                logging.error({"event": "Update-App", "status": "Failed", "error": "App not found"})
+                await self.sse_service.process_sse_message(
+                    message = "App not found",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
                 return
             
             app = Application(**dict(app))
             app.app_name = app_name
 
-            await app_repo.update_app(app)
+            updated, message = await app_repo.update_app(app)
+
+            if updated:
+                await self.sse_service.process_sse_message(
+                    message = message,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Info
+                )
+
+            else:
+                await self.sse_service.process_sse_message(
+                    message = message,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
 
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
     async def delete_app(self,token: dict, app_name:str, app_url:str):
@@ -118,12 +150,30 @@ class AppService:
 
             app = await app_repo.get_app_by_name_and_url(app_name, app_url)
             if not app:
-                logging.error({"event": "Delete-App", "status": "Failed", "error": "App not found"})
+                await self.sse_service.process_sse_message(
+                    message = "App not found",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
                 return
             
             app = Application(**dict(app))
 
-            await app_repo.delete_app(app.app_id)
+            deleted, message = await app_repo.delete_app(app.app_id)
+
+            if deleted:
+                await self.sse_service.process_sse_message(
+                    message = message,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Info
+                )
+
+            else:
+                await self.sse_service.process_sse_message(
+                    message = message,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
 
     async def get_app_by_user_id(self, token:dict):
         user_id = token.get("user_id")
@@ -135,9 +185,9 @@ class AppService:
             if not result:
                 return None
             
-            app = Application(**dict(result))
+            apps = [Application(**dict(app)).model_dump() for app in result]
 
-            return app.model_dump_json()
+            return apps
         
     async def get_app_by_user_id_and_url(self, token:dict, app_url:str):
 

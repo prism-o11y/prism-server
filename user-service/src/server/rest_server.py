@@ -14,6 +14,7 @@ from src.kafka.consumer import KafkaConsumerService
 from src.svc.org.service import OrgService
 from src.svc.user.service import UserService
 from src.svc.apps.service import AppService
+from src.svc.sse.service import SSEService
 
 class RestServer:
     def __init__(self, config: BaseConfig) -> None:
@@ -78,9 +79,14 @@ class RestServer:
             kafka_producer,
         )
 
+        sse_svc: SSEService = SSEService(
+            kafka_producer
+        )
+
         app_svc: AppService = AppService(
             postgres_manager,
-            kafka_producer
+            kafka_producer,
+            sse_svc
         )
 
         kafka_consumer: KafkaConsumerService = KafkaConsumerService(

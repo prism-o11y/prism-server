@@ -3,6 +3,7 @@ services:
     image: nginx:latest
     ports:
       - "80:80"
+      - "81:81"
     depends_on:
       - user-service
       - alert-noti-service-1

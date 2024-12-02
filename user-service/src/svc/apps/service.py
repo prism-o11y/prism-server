@@ -3,18 +3,21 @@ from ...config.base_config import BaseConfig, get_base_config
 from ...database.postgres import PostgresManager, get_postgres_manager
 from ...svc.user.repository import UserRepository
 from ...svc.user.models import User
+from ...svc.sse.models import SSENotification, AlertSeverity
 from fastapi import Depends
 from ...kafka import model
 from .models import Application
 from .repository import AppRepository
+from ..sse.service import SSEService, get_sse_service
 import logging, uuid
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 class AppService:
 
-    def __init__(self, postgres_manager:PostgresManager,kafka_producer) -> None:
+    def __init__(self, postgres_manager:PostgresManager,kafka_producer, sse_service:SSEService) -> None:
         self.postgres_manager:PostgresManager = postgres_manager
         self.kafka_producer:KafkaProducerService = kafka_producer
+        self.sse_service:SSEService = sse_service
         self.base_config:BaseConfig = get_base_config()
 
     async def produce_app_request(self, data:dict, user_id, action:str ,email:str = None):
@@ -42,7 +45,7 @@ class AppService:
             logging.info({"event": "Produce-Message", "action": action, "status": "Produced"})
 
         except Exception as e:
-            logging.error({"event": "Produce-Message", "action": action, "status": "Failed", "error": str(e)})    
+            logging.error({"event": "Produce-Message", "action": action, "status": "Failed", "error": str(e)})
 
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
     async def create_app(self, name:str, url:str, token:dict):
@@ -55,12 +58,26 @@ class AppService:
             if not result:
                 logging.error({"event": "Create-App", "status": "Failed", "error": "User not found"})
                 return
+
+                # await self.sse_service.process_sse_message(
+                #     message = "User not found",
+                #     client_id = "test-client",
+                #     severity = AlertSeverity.Critical
+                # )
+
             
             user = User(**dict(result))
 
             if not user.org_id:
                 logging.error({"event": "Create-App", "status": "Failed", "error": "User not associated with any org"})
                 return
+
+                # await self.sse_service.process_sse_message(
+                #     message = "User not associated with any org",
+                #     client_id = "test-client",
+                #     severity = AlertSeverity.Critical
+                # )
+
             
             app = await self.generate_app(user.org_id, name, url)
 
@@ -68,9 +85,121 @@ class AppService:
 
             await app_repo.create_app(app)
 
+            # await self.sse_service.process_sse_message(
+            #     message = "App created",
+            #     client_id = "test-client",
+            #     severity = AlertSeverity.Info
+            # )
+
+    @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
+    async def update_app(self, app_name: str, app_url: str, token: dict):
+        user_id = token.get("user_id")
+
+        async with self.postgres_manager.get_connection() as connection:
+            
+            app_repo = AppRepository(connection)
+            app = await app_repo.get_app_by_user_id_and_url(user_id, app_url)
+            if not app:
+                logging.error({"event": "Update-App", "status": "Failed", "error": "App not found"})
+                return
+            
+            app = Application(**dict(app))
+            app.app_name = app_name
+
+            await app_repo.update_app(app)
+
+    @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
+    async def delete_app(self,token: dict, app_name:str, app_url:str):
+        user_id = token.get("user_id")
+
+        async with self.postgres_manager.get_connection() as connection:
+
+            app_repo = AppRepository(connection)
+
+            app = await app_repo.get_app_by_name_and_url(app_name, app_url)
+            if not app:
+                logging.error({"event": "Delete-App", "status": "Failed", "error": "App not found"})
+                return
+            
+            app = Application(**dict(app))
+
+            await app_repo.delete_app(app.app_id)
+
+    async def get_app_by_user_id(self, token:dict):
+        user_id = token.get("user_id")
+
+        async with self.postgres_manager.get_connection() as connection:
+
+            app_repo = AppRepository(connection)
+            result = await app_repo.get_app_by_user_id(user_id) 
+            if not result:
+                return None
+            
+            app = Application(**dict(result))
+
+            return app.model_dump_json()
+        
+    async def get_app_by_user_id_and_url(self, token:dict, app_url:str):
+
+        user_id = token.get("user_id")
+
+        async with self.postgres_manager.get_connection() as connection:
+
+            app_repo = AppRepository(connection)
+            result = await app_repo.get_app_by_user_id_and_url(user_id, app_url)
+            if not result:
+                return None
+            
+            app = Application(**dict(result))
+
+            return app.model_dump_json()
+        
+
+    async def get_app_by_id(self, app_id:uuid.UUID):
+
+        async with self.postgres_manager.get_connection() as connection:
+
+            app_repo = AppRepository(connection)
+            result = await app_repo.get_app_by_id(app_id)
+            if not result:
+                return None
+            
+            app = Application(**dict(result))
+
+            return app.model_dump_json()
+        
+    async def get_app_by_org_id(self, org_id:uuid.UUID):
+
+        async with self.postgres_manager.get_connection() as connection:
+
+            app_repo = AppRepository(connection)
+            result = await app_repo.get_app_by_org_id(org_id)
+            if not result:
+                return None
+            
+            apps = [Application(**dict(app)).model_dump() for app in result]
+
+            return apps
+        
+    async def get_all_apps(self):
+
+        async with self.postgres_manager.get_connection() as connection:
+
+            app_repo = AppRepository(connection)
+            result = await app_repo.get_all_apps()
+            if not result:
+                return None
+            
+            apps = [Application(**dict(app)).model_dump() for app in result]
+
+            return apps
+
+
+
     async def generate_app(self, org_id:uuid.UUID, name:str, url:str):
         return Application.create_application(org_id, name, url)
 
 async def get_app_service(kafka_producer:KafkaProducerService = Depends(get_kafka_producer_service),
-                          postgres_manager:PostgresManager = Depends(get_postgres_manager)):
-    return AppService(postgres_manager=postgres_manager, kafka_producer=kafka_producer)
+                          postgres_manager:PostgresManager = Depends(get_postgres_manager),
+                          sse_service:SSEService = Depends(get_sse_service)):
+    return AppService(postgres_manager=postgres_manager, kafka_producer=kafka_producer, sse_service=sse_service)

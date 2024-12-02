@@ -24,9 +24,9 @@ class UserService:
 
     async def produce_new_user(self, user: User):
 
-        data = model.UserData(
+        data = model.Data(
             action = model.Action.INSERT_USER, 
-            user_data = user.model_dump(),
+            data = user.model_dump(),
         ).model_dump_json().encode('utf-8')
 
         message = model.EventData(
@@ -50,9 +50,9 @@ class UserService:
 
     async def produce_delete_user(self, user_id: uuid.UUID):
 
-        data = model.UserData(
+        data = model.Data(
             action = model.Action.DELETE_USER,
-            user_data = {"user_id": user_id}
+            data = {"user_id": user_id}
         ).model_dump_json().encode('utf-8')
 
         message = model.EventData(

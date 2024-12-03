@@ -171,7 +171,7 @@ class UserRepository:
 
             return True, "User added to org successfully"
 
-    async def remove_user_from_org(self, user_id:str):
+    async def remove_user_from_org(self, user_id:str) -> tuple[bool,str]:
 
         now = dt.datetime.now()
         async with self.connection.transaction():
@@ -192,7 +192,10 @@ class UserRepository:
 
             row_updated = int(result.split()[-1])
 
-            return row_updated
+            if row_updated == 0:
+                return False, "User not found"
+            
+            return True, "User removed from org successfully"
                 
             
 

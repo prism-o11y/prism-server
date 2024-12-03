@@ -15,15 +15,6 @@ class OrgRepository:
 
     async def create_org(self, org: Org, user_id:str) -> tuple[bool,str]:
         try:
-            # org_id = await self.user_repo.get_user_org(user_id)
-            # if org_id is not None:
-            #     logging.error({"event": "Create-Org", "org": org.name, "status": "Failed", "error": "User already belongs to an organization or user doesn't exist"})
-            #     return
-            
-            # org_name = await self.get_org_by_name(org.name)
-            # if org_name is not None:
-            #     logging.error({"event": "Create-Org", "org": org.name, "status": "Failed", "error": "Org already exists"})
-            #     return
 
             async with self.connection.transaction():     
                 org_insert_query = '''
@@ -40,8 +31,6 @@ class OrgRepository:
                     org.created_at,
                     org.updated_at
                 )
-
-                # await self.user_repo.add_user_to_org(user_id, org_id)
         
         except UniqueViolationError as e:
             return False, "Org already exists"
@@ -51,30 +40,6 @@ class OrgRepository:
             return False, str(e)
         
         return True, "Org created successfully"
-            
-    async def add_user_to_org(self, new_user_email:str, admin_user_id:str):
-
-        org_id = await self.user_repo.get_user_org(admin_user_id)
-
-        if org_id is None:
-            logging.error({"event": "Add-User-To-Org", "email": new_user_email, "status": "Failed", "error": "Current user doesn't belong to an organization"})
-            return
-        query_user = await self.user_repo.get_user_by_email(new_user_email)
-
-        if query_user is None:
-            logging.error({"event": "Add-User-To-Org", "email": new_user_email, "status": "Failed", "error": "User doesn't exist"})
-            return
-        
-        user = User(**dict(query_user))
-
-        if user.org_id is not None:
-            logging.error({"event": "Add-User-To-Org", "email": new_user_email, "status": "Failed", "error": "User already belongs to an organization"})
-            return
-        
-        await self.user_repo.add_user_to_org(user.user_id, org_id)
-
-        logging.info({"event": "Add-User-To-Org", "email": new_user_email, "status": "Success"})
-
 
     async def remove_user_from_org(self, user_id:str):
         org_id = await self.user_repo.get_user_org(user_id)
@@ -125,7 +90,7 @@ class OrgRepository:
             )
             return org
 
-    async def delete_org(self, org_id:str):
+    async def delete_org(self, org_id:str) -> tuple[bool,str]:
         async with self.connection.transaction():
             
             query = '''
@@ -143,12 +108,11 @@ class OrgRepository:
             row_updated = int(result.split()[-1])
 
             if row_updated == 0:
-                logging.error({"event": "Delete-Org", "org_id": org_id, "status": "Failed", "error": "Org not found"})
-                return
-            
-            logging.info({"event": "Delete-Org", "org_id": org_id, "status": "Success"})
+                return False, "Org not found"
 
-    async def remove_users_from_org(self, org_id:str):
+            return True, "Org deleted successfully"
+
+    async def remove_users_from_org(self, org_id:str) -> tuple[bool,str]:
         async with self.connection.transaction():
             
             query = '''
@@ -164,10 +128,9 @@ class OrgRepository:
 
             row_updated = int(result.split()[-1])
             if row_updated == 0:
-                logging.error({"event": "Remove-Users-From-Org", "org_id": org_id, "status": "Failed", "error": "Org not found"})
-                return
-            
-            logging.info({"event": "Remove-Users-From-Org", "org_id": org_id, "status": "Success"})
+                return False, "Org not found"
+
+            return True, "Users removed from org successfully"
     
     async def update_org(self):
         async with self.connection.transaction():

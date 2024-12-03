@@ -116,8 +116,48 @@ class OrgService:
         admin_user_id = token.get("user_id")
         async with self.postgres_manager.get_connection() as connection:
             user_repo = UserRepository(connection)
-            org_repo = OrgRepository(connection, user_repo)
-            await org_repo.add_user_to_org(new_user_email,admin_user_id)
+            org_id = await user_repo.get_user_org(admin_user_id)
+
+            if not org_id:
+                await self.sse_service.process_sse_message(
+                    message = "Current user doesn't belong to an organization",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+            
+            user = await user_repo.get_user_by_email(new_user_email)
+            if not user:
+                await self.sse_service.process_sse_message(
+                    message = "User doesn't exist",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+            
+            user = User(**dict(user))
+            if user.org_id:
+                await self.sse_service.process_sse_message(
+                    message = "User already belongs to an organization",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+            
+            added, msg = await user_repo.add_user_to_org(user.user_id, org_id)
+            if not added:
+                await self.sse_service.process_sse_message(
+                    message = msg,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+            
+            await self.sse_service.process_sse_message(
+                message = msg,
+                client_id = SSEClients.TEST_CLIENT,
+                severity = AlertSeverity.Info
+            )
 
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
     async def remove_user_from_org(self, token: dict):
@@ -125,8 +165,30 @@ class OrgService:
 
         async with self.postgres_manager.get_connection() as connection:
             user_repo = UserRepository(connection)
-            org_repo = OrgRepository(connection, user_repo)
-            await org_repo.remove_user_from_org(user_id)
+            org_id = await user_repo.get_user_org(user_id)
+            if not org_id:
+                await self.sse_service.process_sse_message(
+                    message = "User doesn't belong to an organization",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+            
+            removed, msg = await user_repo.remove_user_from_org(user_id)
+
+            if not removed:
+                await self.sse_service.process_sse_message(
+                    message = msg,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+            
+            await self.sse_service.process_sse_message(
+                message = msg,
+                client_id = SSEClients.TEST_CLIENT,
+                severity = AlertSeverity.Info
+            )
 
 
     async def get_org_by_id(self, org_id:str):
@@ -176,17 +238,46 @@ class OrgService:
             user_repo = UserRepository(connection)
             result = await user_repo.get_user_by_id(user_id)
             if not result:
-                logging.error({"event": "Delete-Org", "status": "Failed", "error": "User not found"})
+                await self.sse_service.process_sse_message(
+                    message = "User not found",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
                 return
 
             user = User(**dict(result))
             if user.org_id is None:
-                logging.error({"event": "Delete-Org", "status": "Failed", "error": "User does not belong to any org"})
+                await self.sse_service.process_sse_message(
+                    message = "User doesn't belong to an organization",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
                 return
                 
             org_repo = OrgRepository(connection, user_repo)
-            await org_repo.delete_org(user.org_id)
-            await org_repo.remove_users_from_org(user.org_id)
+            deleted, delete_msg = await org_repo.delete_org(user.org_id)
+            if not deleted:
+                await self.sse_service.process_sse_message(
+                    message = delete_msg,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+            removed, remove_msg = await org_repo.remove_users_from_org(user.org_id)
+
+            if not removed:
+                await self.sse_service.process_sse_message(
+                    message = remove_msg,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+            
+            await self.sse_service.process_sse_message(
+                message = delete_msg + " & " + remove_msg,
+                client_id = SSEClients.TEST_CLIENT,
+                severity = AlertSeverity.Info
+            )
 
     async def update_org(self):
         pass

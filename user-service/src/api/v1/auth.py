@@ -53,7 +53,6 @@ async def callback(request: Request,
         )
 
         return response
-        # await user_svc.produce_new_user(user)
 
 
     except HTTPException as e:

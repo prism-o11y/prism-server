@@ -3,7 +3,7 @@ from asyncpg import Connection
 from starlette.status import HTTP_500_INTERNAL_SERVER_ERROR, HTTP_404_NOT_FOUND
 from fastapi import Depends, HTTPException
 from src.svc.user.models import User, STATUS
-import uuid
+import uuid, logging, datetime as dt
 from src.database.postgres import PostgresManager, get_db_connection
 
 from asyncpg import Connection
@@ -94,6 +94,17 @@ class UserRepository:
             )
 
             return user_id
+        
+    async def get_all_users(self):
+
+        async with self.connection.transaction():
+
+            select_query = '''
+                            SELECT user_id, org_id, email, status_id, created_at, updated_at, last_login
+                            FROM users;
+                           '''
+            rows = await self.connection.fetch(select_query)
+            return rows
 
     async def delete_user(self, user_id):
 
@@ -150,10 +161,31 @@ class UserRepository:
             row_updated = int(result.split()[-1])
 
             if row_updated == 0:
-                raise HTTPException(
-                    status_code = HTTP_404_NOT_FOUND,
-                    detail = "User not found or error updating user"
-                )
+                logging.error({"event": "Add-User-To-Org", "user_id": user_id, "org_id": org_id, "status": "Failed", "error": "User not found"})
+
+    async def remove_user_from_org(self, user_id:str):
+
+        now = dt.datetime.now()
+        async with self.connection.transaction():
+            
+            user_org_remove_query = '''
+                                    UPDATE users
+                                    SET org_id = NULL,
+                                    updated_at = $1
+                                    WHERE user_id = $2 and status_id = $3;
+                                    '''
+            
+            result = await self.connection.execute(
+                user_org_remove_query,
+                now,
+                user_id,
+                STATUS.ACTIVE.value
+            )
+
+            row_updated = int(result.split()[-1])
+
+            return row_updated
+                
             
 
 async def get_user_repository(connection:Connection = Depends(get_db_connection)) -> UserRepository:

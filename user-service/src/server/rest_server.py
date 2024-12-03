@@ -11,12 +11,14 @@ from src.database.postgres import PostgresManager
 from src.svc.auth.service import Auth0Manager
 from src.kafka.producer import KafkaProducerService
 from src.kafka.consumer import KafkaConsumerService
+from src.svc.org.service import OrgService
 from src.svc.user.service import UserService
+from src.svc.apps.service import AppService
 
 class RestServer:
     def __init__(self, config: BaseConfig) -> None:
         self._app = FastAPI(
-            root_path="/api",
+            root_path="/",
             title=config.SERVER.NAME,
             version=config.SERVER.VERSION,
             lifespan=self.lifespan_context,
@@ -71,10 +73,23 @@ class RestServer:
             jwt_manager
         )
 
+        org_svc: OrgService = OrgService(
+            postgres_manager,
+            kafka_producer,
+        )
+
+        app_svc: AppService = AppService(
+            postgres_manager,
+            kafka_producer
+        )
+
         kafka_consumer: KafkaConsumerService = KafkaConsumerService(
             self.config.KAFKA,
             user_svc,
+            org_svc,
+            app_svc
         )
+        
         app.state.kafka_consumer = kafka_consumer
         await kafka_consumer.start_user_consumer()
 

@@ -45,7 +45,7 @@ async def callback(request: Request,
         user:User = user_svc.generate_user(email)
         jwt = await user_svc.create_user(user, sub)
 
-        response = JSONResponse(status_code=HTTP_201_CREATED, content={"detail":"User login successful"})
+        response = RedirectResponse(url="http://localhost:3000")
         response.set_cookie(
             key="jwt",
             value=jwt,
@@ -53,6 +53,7 @@ async def callback(request: Request,
         )
 
         return response
+    
 
 
     except HTTPException as e:

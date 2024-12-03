@@ -9,11 +9,12 @@ class SSEService:
         self.kafka_producer = kafka_producer
         self.base_config: BaseConfig = get_base_config()
 
-    async def process_sse_message(self, message:str, client_id:str, severity:str):
+    async def process_sse_message(self, message:str, client_id:str, severity:str, connection_id:str):
         try:
             
             sse_notification = SSENotification(
                 client_id = client_id,
+                connection_id = connection_id,
                 severity = severity,
                 message = message,
                 dateTime = dt.datetime.now(dt.timezone.utc),

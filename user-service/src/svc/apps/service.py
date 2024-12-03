@@ -58,6 +58,7 @@ class AppService:
             if not result:
                 await self.sse_service.process_sse_message(
                     message = "User not found",
+                    connection_id = user_id,
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Critical
                 )
@@ -69,6 +70,7 @@ class AppService:
             if not user.org_id:
                 await self.sse_service.process_sse_message(
                     message = "User not associated with any org",
+                    connection_id = user_id,
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Critical
                 )
@@ -77,9 +79,12 @@ class AppService:
             app_repo = AppRepository(connection)
 
             app = await app_repo.get_app_by_name_and_url(name, url)
-            if app:
+
+            app_obj = Application(**dict(app)) if app else None
+            if app_obj:
                 await self.sse_service.process_sse_message(
                     message = "App already exists",
+                    connection_id = app_obj.app_id,
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -90,19 +95,11 @@ class AppService:
             created, message = await app_repo.create_app(app)
             
             if created:
-
                 await self.sse_service.process_sse_message(
                     message = message,
+                    connection_id = app.app_id,
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Info
-                )
-            
-            else:
-
-                await self.sse_service.process_sse_message(
-                    message = message,
-                    client_id = SSEClients.TEST_CLIENT,
-                    severity = AlertSeverity.Warning
                 )
 
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
@@ -116,6 +113,7 @@ class AppService:
             if not app:
                 await self.sse_service.process_sse_message(
                     message = "App not found",
+                    connection_id = user_id,
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -129,15 +127,9 @@ class AppService:
             if updated:
                 await self.sse_service.process_sse_message(
                     message = message,
+                    connection_id = app.app_id,
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Info
-                )
-
-            else:
-                await self.sse_service.process_sse_message(
-                    message = message,
-                    client_id = SSEClients.TEST_CLIENT,
-                    severity = AlertSeverity.Warning
                 )
 
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
@@ -152,6 +144,7 @@ class AppService:
             if not app:
                 await self.sse_service.process_sse_message(
                     message = "App not found",
+                    connection_id = user_id,
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -164,15 +157,9 @@ class AppService:
             if deleted:
                 await self.sse_service.process_sse_message(
                     message = message,
+                    connection_id = app.app_id,
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Info
-                )
-
-            else:
-                await self.sse_service.process_sse_message(
-                    message = message,
-                    client_id = SSEClients.TEST_CLIENT,
-                    severity = AlertSeverity.Warning
                 )
 
     async def get_app_by_user_id(self, token:dict):

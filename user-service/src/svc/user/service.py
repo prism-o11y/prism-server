@@ -50,31 +50,6 @@ class UserService:
         except Exception as e:
             logging.error({"event": "Produce-Message", "user": user_id, "status": "Failed", "error": str(e)})
 
-    # async def produce_delete_user(self, user_id: uuid.UUID):
-
-    #     data = model.Data(
-    #         action = model.Action.DELETE_USER,
-    #         data = {"user_id": user_id}
-    #     ).model_dump_json().encode('utf-8')
-
-    #     message = model.EventData(
-    #         source = model.SourceType.USER_SERVICE,
-    #         data = data,
-    #         email = None,
-    #         user_id = user_id
-    #     )
-
-    #     try:
-    #         await self.kafka_producer.enqueue_message(
-    #             topic = self.base_config.KAFKA.TOPICS.get("user"),
-    #             key = str(user_id),
-    #             value = message.model_dump_json().encode('utf-8')
-    #         )
-    #         logging.info({"event": "Produce-Message", "user": user_id, "status": "Produced"})
-
-    #     except Exception as e:
-    #         logging.error({"event": "Produce-Message", "user": user_id, "status": "Failed", "error": str(e)})
-
     def generate_user(self, email:str) -> User:
 
         user = User(
@@ -146,25 +121,19 @@ class UserService:
             if not user:
                 await self.sse_service.process_sse_message(
                     message = "User not found",
+                    connection_id = user_id,
                     client_id = SSEClients.TEST_CLIENT,
                     severity=AlertSeverity.Warning
                 )
                 return
+            
             deleted,message = await user_repo.delete_user(user_id)
-
             if deleted:
                 await self.sse_service.process_sse_message(
                     message = message,
+                    connection_id = user_id,
                     client_id = SSEClients.TEST_CLIENT,
                     severity=AlertSeverity.Info
-                )
-                return
-
-            else:
-                await self.sse_service.process_sse_message(
-                    message = message,
-                    client_id = SSEClients.TEST_CLIENT,
-                    severity=AlertSeverity.Warning
                 )
                 return
             

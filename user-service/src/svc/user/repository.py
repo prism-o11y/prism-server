@@ -117,20 +117,16 @@ class UserRepository:
                             WHERE user_id = $2 AND status_id = $3
                             RETURNING user_id;
                            '''
-            result = await self.connection.execute(
+            await self.connection.execute(
                 select_query,
                 STATUS.REMOVED.value,
                 user_id,
                 STATUS.ACTIVE.value
             )
 
-            row_deleted = int(result.split(" ")[-1])
-            if row_deleted == 0:
-                return False, "Failed to delete user"
             
             return True, "User deleted successfully"
 
-            # return user_id
         
     async def get_user_org(self, user_id: str) -> Optional[str]:
 
@@ -157,17 +153,12 @@ class UserRepository:
                                     WHERE user_id = $2 and status_id = $3;
                                     '''
 
-            result = await self.connection.execute(
+            await self.connection.execute(
                 user_org_insert_query,
                 org_id,
                 user_id,
                 STATUS.ACTIVE.value
             )
-
-            row_updated = int(result.split()[-1])
-
-            if row_updated == 0:
-                return False, "User not found"
 
             return True, "User added to org successfully"
 
@@ -183,17 +174,12 @@ class UserRepository:
                                     WHERE user_id = $2 and status_id = $3;
                                     '''
             
-            result = await self.connection.execute(
+            await self.connection.execute(
                 user_org_remove_query,
                 now,
                 user_id,
                 STATUS.ACTIVE.value
             )
-
-            row_updated = int(result.split()[-1])
-
-            if row_updated == 0:
-                return False, "User not found"
             
             return True, "User removed from org successfully"
                 

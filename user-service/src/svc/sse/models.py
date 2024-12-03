@@ -11,6 +11,7 @@ class AlertSeverity(StrEnum):
 
 class SSENotification(BaseModel):
     client_id: str
+    connection_id:str
     severity: AlertSeverity
     message: str
     dateTime: dt.datetime

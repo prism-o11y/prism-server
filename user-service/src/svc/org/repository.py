@@ -14,47 +14,38 @@ class OrgRepository:
         self.user_repo:UserRepository = user_repo
 
     async def create_org(self, org: Org, user_id:str) -> tuple[bool,str]:
-        try:
 
-            async with self.connection.transaction():     
-                org_insert_query = '''
-                                    INSERT INTO organizations(org_id,name,status_id,created_at,updated_at)
-                                    VALUES($1,$2,$3,$4,$5)
-                                    RETURNING org_id;
-                                    '''
-                
-                org_id = await self.connection.fetchval(
-                    org_insert_query,
-                    org.org_id,
-                    org.name,
-                    org.status_id,
-                    org.created_at,
-                    org.updated_at
-                )
-        
-        except UniqueViolationError as e:
-            return False, "Org already exists"
-
-        
-        except Exception as e:
-            return False, str(e)
+        async with self.connection.transaction():     
+            org_insert_query = '''
+                                INSERT INTO organizations(org_id,name,status_id,created_at,updated_at)
+                                VALUES($1,$2,$3,$4,$5)
+                                '''
+            
+            await self.connection.execute(
+                org_insert_query,
+                org.org_id,
+                org.name,
+                org.status_id,
+                org.created_at,
+                org.updated_at
+            )
         
         return True, "Org created successfully"
 
-    async def remove_user_from_org(self, user_id:str):
-        org_id = await self.user_repo.get_user_org(user_id)
+    # async def remove_user_from_org(self, user_id:str):
+    #     org_id = await self.user_repo.get_user_org(user_id)
 
-        if org_id is None:
-            logging.error({"event": "Remove-User-From-Org", "user_id": user_id, "status": "Failed", "error": "User doesn't belong to an organization"})
-            return
+    #     if org_id is None:
+    #         logging.error({"event": "Remove-User-From-Org", "user_id": user_id, "status": "Failed", "error": "User doesn't belong to an organization"})
+    #         return
         
-        row_updated = await self.user_repo.remove_user_from_org(user_id)
+    #     row_updated = await self.user_repo.remove_user_from_org(user_id)
 
-        if row_updated == 0:
-                logging.error({"event": "Remove-User-From-Org", "user_id": user_id, "status": "Failed", "error": "User not found"})
-                return
+    #     if row_updated == 0:
+    #             logging.error({"event": "Remove-User-From-Org", "user_id": user_id, "status": "Failed", "error": "User not found"})
+    #             return
 
-        logging.info({"event": "Remove-User-From-Org", "user_id": user_id, "status": "Success"})
+    #     logging.info({"event": "Remove-User-From-Org", "user_id": user_id, "status": "Success"})
             
 
     async def get_org_by_id(self, org_id:str):

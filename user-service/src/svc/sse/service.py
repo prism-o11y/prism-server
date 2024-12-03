@@ -17,7 +17,7 @@ class SSEService:
                 connection_id = connection_id,
                 severity = severity,
                 message = message,
-                dateTime = dt.datetime.now(dt.timezone.utc),
+                datetime = dt.datetime.now(dt.timezone.utc),
             ).model_dump()
 
             notifWrapper = NotificationWrapper(

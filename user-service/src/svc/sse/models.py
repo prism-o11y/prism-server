@@ -14,7 +14,7 @@ class SSENotification(BaseModel):
     connection_id:str
     severity: AlertSeverity
     message: str
-    dateTime: dt.datetime
+    datetime: dt.datetime
     target_node_id: Optional[str] = None
     origin_node_id: Optional[str] = None
     is_forwarded: Optional[bool] = None

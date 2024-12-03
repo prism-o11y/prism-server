@@ -13,17 +13,17 @@ class OrgRepository:
         self.connection:Connection = connection
         self.user_repo:UserRepository = user_repo
 
-    async def create_org(self, org: Org, user_id:str):
+    async def create_org(self, org: Org, user_id:str) -> tuple[bool,str]:
         try:
-            org_id = await self.user_repo.get_user_org(user_id)
-            if org_id is not None:
-                logging.error({"event": "Create-Org", "org": org.name, "status": "Failed", "error": "User already belongs to an organization or user doesn't exist"})
-                return
+            # org_id = await self.user_repo.get_user_org(user_id)
+            # if org_id is not None:
+            #     logging.error({"event": "Create-Org", "org": org.name, "status": "Failed", "error": "User already belongs to an organization or user doesn't exist"})
+            #     return
             
-            org_name = await self.get_org_by_name(org.name)
-            if org_name is not None:
-                logging.error({"event": "Create-Org", "org": org.name, "status": "Failed", "error": "Org already exists"})
-                return
+            # org_name = await self.get_org_by_name(org.name)
+            # if org_name is not None:
+            #     logging.error({"event": "Create-Org", "org": org.name, "status": "Failed", "error": "Org already exists"})
+            #     return
 
             async with self.connection.transaction():     
                 org_insert_query = '''
@@ -41,19 +41,16 @@ class OrgRepository:
                     org.updated_at
                 )
 
-                await self.user_repo.add_user_to_org(user_id, org_id)
+                # await self.user_repo.add_user_to_org(user_id, org_id)
         
         except UniqueViolationError as e:
-            logging.error({"event": "Create-Org", "org": org.name, "status": "Failed", "error": str(e)})
-            return
+            return False, "Org already exists"
+
         
         except Exception as e:
-            logging.error({"event": "Create-Org", "org": org.name, "status": "Failed", "error": str(e)})
-            return
+            return False, str(e)
         
-
-
-        logging.info({"event": "Create-Org", "org": org.name, "status": "Success"})
+        return True, "Org created successfully"
             
     async def add_user_to_org(self, new_user_email:str, admin_user_id:str):
 

@@ -33,4 +33,3 @@ class NotificationWrapper(BaseModel):
 
 class SSEClients(StrEnum):
     TEST_CLIENT = "test-client"
-    USER-SERVICE = "user-service"

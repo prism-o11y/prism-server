@@ -76,7 +76,7 @@ class AppService:
 
             app_repo = AppRepository(connection)
 
-            app = app_repo.get_app_by_name_and_url(name, url)
+            app = await app_repo.get_app_by_name_and_url(name, url)
             if app:
                 await self.sse_service.process_sse_message(
                     message = "App already exists",

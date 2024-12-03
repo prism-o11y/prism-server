@@ -35,7 +35,7 @@ class KafkaProducerService:
     @retry(stop=stop_after_attempt(5), wait=wait_exponential(min=1, max=10))
     async def _send_message_with_retry(self, topic: str, key: str, value: bytes):
         try:
-            await self.producer.send_and_wait(topic, key=key.encode('utf-8'), value=value,)
+            await self.producer.send_and_wait(topic, key=key.encode('utf-8'), value=value)
 
             logging.info({"event": "MessageSent", "topic": topic, "key": key, "status": "success"})
         except Exception as e:

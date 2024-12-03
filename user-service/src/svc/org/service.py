@@ -9,13 +9,15 @@ from ..user.models import User
 import logging
 from tenacity import retry, stop_after_attempt, wait_exponential
 from ...config.base_config import get_base_config,BaseConfig
-
+from ..sse.models import AlertSeverity, SSEClients
+from ..sse.service import SSEService, get_sse_service
 
 class OrgService:
 
-    def __init__(self, postgres_manager:PostgresManager,kafka_producer) -> None:
+    def __init__(self, postgres_manager:PostgresManager,kafka_producer:KafkaProducerService, sse_service: SSEService) -> None:
         self.postgres_manager:PostgresManager = postgres_manager
         self.kafka_producer:KafkaProducerService = kafka_producer
+        self.sse_service:SSEService = sse_service
         self.base_config:BaseConfig = get_base_config()
 
     async def produce_org_request(self, data:dict, user_id, action:str ,email:str = None):
@@ -48,13 +50,65 @@ class OrgService:
 
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
     async def create_org(self, name: str, token: dict):
-        org:Org = await self.generate_org(name)
         user_id = token.get("user_id")
         
         async with self.postgres_manager.get_connection() as connection:
             user_repo = UserRepository(connection)
             org_repo = OrgRepository(connection, user_repo)
-            await org_repo.create_org(org, user_id)
+
+            user = await user_repo.get_user_by_id(user_id)
+            if not user:
+                await self.sse_service.process_sse_message(
+                    message = "User not found",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+
+            org_id = await user_repo.get_user_org(user_id)
+            if org_id:
+                await self.sse_service.process_sse_message(
+                    message = "User already belongs to an organization",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+
+            org_exist = await org_repo.get_org_by_name(name)
+            if org_exist:
+                await self.sse_service.process_sse_message(
+                    message = "Org already exists",
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+            
+            org:Org = await self.generate_org(name)
+
+            org_created, org_msg = await org_repo.create_org(org, user_id)
+            if not org_created:
+                await self.sse_service.process_sse_message(
+                    message = org_msg,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+            
+            org_added, usr_msg = await user_repo.add_user_to_org(user_id, org.org_id)
+
+            if not org_added:
+                await self.sse_service.process_sse_message(
+                    message = usr_msg,
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity = AlertSeverity.Warning
+                )
+                return
+            
+            await self.sse_service.process_sse_message(
+                message = org_msg + " & " + usr_msg,
+                client_id = SSEClients.TEST_CLIENT,
+                severity = AlertSeverity.Info
+            ) 
 
 
     @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
@@ -147,5 +201,6 @@ class OrgService:
 async def get_org_service(
         postgres_manager: PostgresManager = Depends(get_postgres_manager),
         kafka_producer: KafkaProducerService = Depends(get_kafka_producer_service),
+        sse_service: SSEService = Depends(get_sse_service)
     ) -> OrgService:
-    return OrgService(postgres_manager, kafka_producer)
+    return OrgService(postgres_manager, kafka_producer, sse_service)

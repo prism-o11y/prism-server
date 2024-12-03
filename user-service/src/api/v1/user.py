@@ -3,6 +3,7 @@ from fastapi.exceptions import HTTPException
 from ...jwt.service import get_jwt_manager, JWTManager
 from ...svc.user.service import UserService
 from fastapi.responses import JSONResponse
+from ...kafka.model import Action
 from authlib.integrations.starlette_client import OAuthError
 import logging, uuid, json, datetime as dt
 from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_201_CREATED, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_200_OK
@@ -125,6 +126,7 @@ async def get_all_users(user_svc:UserService = Depends(get_user_service)):
 async def update_user(user:User, user_svc:UserService = Depends(get_user_service)):
 
     try:
+
         user_id = await user_svc.update_user(user)
 
         if not user_id:
@@ -158,27 +160,44 @@ async def update_user(user:User, user_svc:UserService = Depends(get_user_service
         )
     
 @_router.delete("/delete-user", name="user:delete-user")
-async def delete_user(payload:dict[str,str], user_svc:UserService = Depends(get_user_service)):
-    user_id = payload.get("user_id")
-    try:
-        await user_svc.produce_delete_user(user_id)
-
-        return JSONResponse(
-            status_code=HTTP_200_OK,
+async def delete_user(request:Request,
+                        user_svc:UserService = Depends(get_user_service),
+                        jwt_manager:JWTManager = Depends(get_jwt_manager)):
+    
+    jwt = request.cookies.get("jwt")
+    if not jwt:
+        JSONResponse(
+            status_code=HTTP_401_UNAUTHORIZED,
             content = {
-                "status":"Success",
-                "detail": "Processing delete user request",
+                "status":"Failed",
+                "message": "User not authenticated",
+                "data": None
+            }
+        )
+
+    is_valid, token = await jwt_manager.validate_jwt(jwt)
+    if not is_valid:
+        return JSONResponse(
+            status_code=HTTP_401_UNAUTHORIZED,
+            content = {
+                "status":"Failed",
+                "message": "User not authenticated",
                 "data": None
             }
         )
     
-    except Exception as e:
-        logging.exception({"event": "Delete-User", "status": "Failed", "error": str(e)})
-        return JSONResponse(
-            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
-            content = {
-                "status":"Failed",
-                "message": "Internal server error",
-                "data": None
-            }
-        )
+    user_id = token.get("user_id")
+    data = {
+        "user_id": user_id
+    }
+
+    await user_svc.produce_user_request(data, user_id, Action.DELETE_USER)
+
+    return JSONResponse(
+        status_code = HTTP_200_OK,
+        content = {
+            "status":"Waiting",
+            "message": "Processing delete user request",
+            "data": None
+        }
+    )

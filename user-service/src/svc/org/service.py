@@ -60,7 +60,7 @@ class OrgService:
             if not user:
                 await self.sse_service.process_sse_message(
                     message = "User not found",
-                    connection_id = user_id,
+                    connection_id =str(user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -70,7 +70,7 @@ class OrgService:
             if org_id:
                 await self.sse_service.process_sse_message(
                     message = "User already belongs to an organization",
-                    connection_id = org_id,
+                    connection_id = str(org_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -81,7 +81,7 @@ class OrgService:
             if org_obj:
                 await self.sse_service.process_sse_message(
                     message = "Org already exists",
-                    connection_id = org_obj.org_id,
+                    connection_id = str(org_obj.org_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -97,7 +97,7 @@ class OrgService:
             
                 await self.sse_service.process_sse_message(
                     message = org_msg + " & " + usr_msg,
-                    connection_id = org.org_id,
+                    connection_id = str(org.org_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Info
                 ) 
@@ -113,7 +113,7 @@ class OrgService:
             if not org_id:
                 await self.sse_service.process_sse_message(
                     message = "Current user doesn't belong to an organization",
-                    connection_id = admin_user_id,
+                    connection_id = str(admin_user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -123,7 +123,7 @@ class OrgService:
             if not user:
                 await self.sse_service.process_sse_message(
                     message = "User doesn't exist",
-                    connection_id = admin_user_id,
+                    connection_id = str(admin_user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -133,7 +133,7 @@ class OrgService:
             if user.org_id:
                 await self.sse_service.process_sse_message(
                     message = "User already belongs to an organization",
-                    connection_id = user.org_id,
+                    connection_id = str(user.org_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -143,7 +143,7 @@ class OrgService:
             if added:
                 await self.sse_service.process_sse_message(
                     message = msg,
-                    connection_id = user.user_id,
+                    connection_id = str(user.user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Info
                 )
@@ -159,7 +159,7 @@ class OrgService:
             if not org_id:
                 await self.sse_service.process_sse_message(
                     message = "User doesn't belong to an organization",
-                    connection_id = user_id,
+                    connection_id = str(user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -170,7 +170,7 @@ class OrgService:
             if removed:            
                 await self.sse_service.process_sse_message(
                     message = msg,
-                    connection_id = user_id,
+                    connection_id = str(user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Info
                 )
@@ -225,6 +225,7 @@ class OrgService:
             if not result:
                 await self.sse_service.process_sse_message(
                     message = "User not found",
+                    connection_id = str(user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -234,6 +235,7 @@ class OrgService:
             if user.org_id is None:
                 await self.sse_service.process_sse_message(
                     message = "User doesn't belong to an organization",
+                    connection_id = str(user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -241,28 +243,16 @@ class OrgService:
                 
             org_repo = OrgRepository(connection, user_repo)
             deleted, delete_msg = await org_repo.delete_org(user.org_id)
-            if not deleted:
-                await self.sse_service.process_sse_message(
-                    message = delete_msg,
-                    client_id = SSEClients.TEST_CLIENT,
-                    severity = AlertSeverity.Warning
-                )
-                return
             removed, remove_msg = await org_repo.remove_users_from_org(user.org_id)
 
-            if not removed:
+            if deleted and removed:
                 await self.sse_service.process_sse_message(
-                    message = remove_msg,
+                    message = delete_msg + " & " + remove_msg,
+                    connection_id = str(user.org_id),
                     client_id = SSEClients.TEST_CLIENT,
-                    severity = AlertSeverity.Warning
+                    severity = AlertSeverity.Info
                 )
                 return
-            
-            await self.sse_service.process_sse_message(
-                message = delete_msg + " & " + remove_msg,
-                client_id = SSEClients.TEST_CLIENT,
-                severity = AlertSeverity.Info
-            )
 
     async def update_org(self):
         pass

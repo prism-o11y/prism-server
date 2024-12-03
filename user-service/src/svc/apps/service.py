@@ -58,18 +58,11 @@ class AppService:
             if not result:
                 await self.sse_service.process_sse_message(
                     message = "User not found",
-                    connection_id = user_id,
+                    connection_id = str(user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Critical
                 )
                 return
-
-                # await self.sse_service.process_sse_message(
-                #     message = "User not found",
-                #     client_id = "test-client",
-                #     severity = AlertSeverity.Critical
-                # )
-
             
 
             user = User(**dict(result))
@@ -77,7 +70,7 @@ class AppService:
             if not user.org_id:
                 await self.sse_service.process_sse_message(
                     message = "User not associated with any org",
-                    connection_id = user_id,
+                    connection_id = str(user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Critical
                 )
@@ -91,7 +84,7 @@ class AppService:
             if app_obj:
                 await self.sse_service.process_sse_message(
                     message = "App already exists",
-                    connection_id = app_obj.app_id,
+                    connection_id = str(app_obj.app_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -104,7 +97,7 @@ class AppService:
             if created:
                 await self.sse_service.process_sse_message(
                     message = message,
-                    connection_id = app.app_id,
+                    connection_id = str(app.app_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Info
                 )
@@ -120,7 +113,7 @@ class AppService:
             if not app:
                 await self.sse_service.process_sse_message(
                     message = "App not found",
-                    connection_id = user_id,
+                    connection_id = str(user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -134,7 +127,7 @@ class AppService:
             if updated:
                 await self.sse_service.process_sse_message(
                     message = message,
-                    connection_id = app.app_id,
+                    connection_id = str(app.app_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Info
                 )
@@ -151,7 +144,7 @@ class AppService:
             if not app:
                 await self.sse_service.process_sse_message(
                     message = "App not found",
-                    connection_id = user_id,
+                    connection_id = str(user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Warning
                 )
@@ -164,7 +157,7 @@ class AppService:
             if deleted:
                 await self.sse_service.process_sse_message(
                     message = message,
-                    connection_id = app.app_id,
+                    connection_id = str(app.app_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity = AlertSeverity.Info
                 )
@@ -237,230 +230,6 @@ class AppService:
             apps = [Application(**dict(app)).model_dump() for app in result]
 
             return apps
-
-
-
-            # await self.sse_service.process_sse_message(
-            #     message = "App created",
-            #     client_id = "test-client",
-            #     severity = AlertSeverity.Info
-            # )
-
-    @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
-    async def update_app(self, app_name: str, app_url: str, token: dict):
-        user_id = token.get("user_id")
-
-        async with self.postgres_manager.get_connection() as connection:
-            
-            app_repo = AppRepository(connection)
-            app = await app_repo.get_app_by_user_id_and_url(user_id, app_url)
-            if not app:
-                logging.error({"event": "Update-App", "status": "Failed", "error": "App not found"})
-                return
-            
-            app = Application(**dict(app))
-            app.app_name = app_name
-
-            await app_repo.update_app(app)
-
-    @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
-    async def delete_app(self,token: dict, app_name:str, app_url:str):
-        user_id = token.get("user_id")
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-
-            app = await app_repo.get_app_by_name_and_url(app_name, app_url)
-            if not app:
-                logging.error({"event": "Delete-App", "status": "Failed", "error": "App not found"})
-                return
-            
-            app = Application(**dict(app))
-
-            await app_repo.delete_app(app.app_id)
-
-    async def get_app_by_user_id(self, token:dict):
-        user_id = token.get("user_id")
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-            result = await app_repo.get_app_by_user_id(user_id) 
-            if not result:
-                return None
-            
-            app = Application(**dict(result))
-
-            return app.model_dump_json()
-        
-    async def get_app_by_user_id_and_url(self, token:dict, app_url:str):
-
-        user_id = token.get("user_id")
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-            result = await app_repo.get_app_by_user_id_and_url(user_id, app_url)
-            if not result:
-                return None
-            
-            app = Application(**dict(result))
-
-            return app.model_dump_json()
-        
-
-    async def get_app_by_id(self, app_id:uuid.UUID):
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-            result = await app_repo.get_app_by_id(app_id)
-            if not result:
-                return None
-            
-            app = Application(**dict(result))
-
-            return app.model_dump_json()
-        
-    async def get_app_by_org_id(self, org_id:uuid.UUID):
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-            result = await app_repo.get_app_by_org_id(org_id)
-            if not result:
-                return None
-            
-            apps = [Application(**dict(app)).model_dump() for app in result]
-
-            return apps
-        
-    async def get_all_apps(self):
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-            result = await app_repo.get_all_apps()
-            if not result:
-                return None
-            
-            apps = [Application(**dict(app)).model_dump() for app in result]
-
-            return apps
-
-
-
-            # await self.sse_service.process_sse_message(
-            #     message = "App created",
-            #     client_id = "test-client",
-            #     severity = AlertSeverity.Info
-            # )
-
-    @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
-    async def update_app(self, app_name: str, app_url: str, token: dict):
-        user_id = token.get("user_id")
-
-        async with self.postgres_manager.get_connection() as connection:
-            
-            app_repo = AppRepository(connection)
-            app = await app_repo.get_app_by_user_id_and_url(user_id, app_url)
-            if not app:
-                logging.error({"event": "Update-App", "status": "Failed", "error": "App not found"})
-                return
-            
-            app = Application(**dict(app))
-            app.app_name = app_name
-
-            await app_repo.update_app(app)
-
-    @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
-    async def delete_app(self,token: dict, app_name:str, app_url:str):
-        user_id = token.get("user_id")
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-
-            app = await app_repo.get_app_by_name_and_url(app_name, app_url)
-            if not app:
-                logging.error({"event": "Delete-App", "status": "Failed", "error": "App not found"})
-                return
-            
-            app = Application(**dict(app))
-
-            await app_repo.delete_app(app.app_id)
-
-    async def get_app_by_user_id(self, token:dict):
-        user_id = token.get("user_id")
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-            result = await app_repo.get_app_by_user_id(user_id) 
-            if not result:
-                return None
-            
-            app = Application(**dict(result))
-
-            return app.model_dump_json()
-        
-    async def get_app_by_user_id_and_url(self, token:dict, app_url:str):
-
-        user_id = token.get("user_id")
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-            result = await app_repo.get_app_by_user_id_and_url(user_id, app_url)
-            if not result:
-                return None
-            
-            app = Application(**dict(result))
-
-            return app.model_dump_json()
-        
-
-    async def get_app_by_id(self, app_id:uuid.UUID):
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-            result = await app_repo.get_app_by_id(app_id)
-            if not result:
-                return None
-            
-            app = Application(**dict(result))
-
-            return app.model_dump_json()
-        
-    async def get_app_by_org_id(self, org_id:uuid.UUID):
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-            result = await app_repo.get_app_by_org_id(org_id)
-            if not result:
-                return None
-            
-            apps = [Application(**dict(app)).model_dump() for app in result]
-
-            return apps
-        
-    async def get_all_apps(self):
-
-        async with self.postgres_manager.get_connection() as connection:
-
-            app_repo = AppRepository(connection)
-            result = await app_repo.get_all_apps()
-            if not result:
-                return None
-            
-            apps = [Application(**dict(app)).model_dump() for app in result]
-
-            return apps
-
-
 
     async def generate_app(self, org_id:uuid.UUID, name:str, url:str):
         return Application.create_application(org_id, name, url)

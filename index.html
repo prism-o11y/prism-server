@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSE Client Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #messages {
+            list-style-type: none;
+            padding: 0;
+        }
+        #messages li {
+            padding: 5px 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .alert {
+            color: red;
+        }
+        .error {
+            color: orange;
+        }
+    </style>
+</head>
+<body>
+    <h1>SSE Client Test</h1>
+    <ul id="messages"></ul>
+    <script>
+        // List of available server nodes
+        const nodes = [
+            'http://localhost:80/api/alert-noti-service',
+        ];
+
+        let currentNodeIndex = 0; // Index of the current node
+        let eventSource;
+        const clientID = 'test-client'; // Unique client identifier
+        const connectionID = 'test-connection'; // Unique connection identifier
+
+        // Utility function to log messages to the UI
+        function logMessage(message, className = '') {
+            const messages = document.getElementById('messages');
+            const newMessage = document.createElement('li');
+            newMessage.textContent = message;
+            if (className) newMessage.classList.add(className);
+            messages.appendChild(newMessage);
+        }
+
+        // Function to establish a connection to the SSE server
+        function connect() {
+            const currentNode = nodes[currentNodeIndex];
+            logMessage(`Attempting to connect to ${currentNode}...`);
+
+            // Create a new EventSource for the current node
+            eventSource = new EventSource(`${currentNode}/events?client_id=${clientID}&connection_id=${connectionID}`);
+
+            eventSource.onopen = function() {
+                logMessage(`Connected to SSE server at ${currentNode}.`);
+                console.log(`Connected to SSE server at ${currentNode}.`);
+            };
+
+            eventSource.onmessage = function(event) {
+                logMessage(`Received event: ${event.data}`);
+                console.log(`Received event: ${event.data}`);
+            };
+
+            // Custom event handler for "alert" events
+            eventSource.addEventListener('alert', function(event) {
+                logMessage(`Alert received: ${event.data}`, 'alert');
+                console.log('Alert received:', event.data);
+            });
+
+            // Handle errors or connection loss
+            eventSource.onerror = function(err) {
+                console.error('EventSource failed:', err);
+                logMessage('Connection error occurred. Retrying...', 'error');
+                eventSource.close();
+                setTimeout(connect, 1000);
+            };
+        }
+
+        // Start the initial connection
+        connect();
+
+        // Close the SSE connection when the page is unloaded
+        window.addEventListener('beforeunload', function() {
+            if (eventSource) {
+                eventSource.close();
+                logMessage('SSE connection closed.');
+                console.log('SSE connection closed.');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -90,16 +90,11 @@ class OrgRepository:
                     WHERE org_id = $2;
                     '''
             
-            result = await self.connection.execute(
+            await self.connection.execute(
                 query, 
                 Status.REMOVED.value,
                 org_id
             )
-
-            row_updated = int(result.split()[-1])
-
-            if row_updated == 0:
-                return False, "Org not found"
 
             return True, "Org deleted successfully"
 
@@ -112,14 +107,10 @@ class OrgRepository:
                     WHERE org_id = $1;
                     '''
             
-            result = await self.connection.execute(
+            await self.connection.execute(
                 query, 
                 org_id
             )
-
-            row_updated = int(result.split()[-1])
-            if row_updated == 0:
-                return False, "Org not found"
 
             return True, "Users removed from org successfully"
     

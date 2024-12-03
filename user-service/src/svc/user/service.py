@@ -121,7 +121,7 @@ class UserService:
             if not user:
                 await self.sse_service.process_sse_message(
                     message = "User not found",
-                    connection_id = user_id,
+                    connection_id = str(user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity=AlertSeverity.Warning
                 )
@@ -131,7 +131,7 @@ class UserService:
             if deleted:
                 await self.sse_service.process_sse_message(
                     message = message,
-                    connection_id = user_id,
+                    connection_id = str(user_id),
                     client_id = SSEClients.TEST_CLIENT,
                     severity=AlertSeverity.Info
                 )

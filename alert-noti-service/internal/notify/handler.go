@@ -98,6 +98,12 @@ func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	connectionID := r.URL.Query().Get("connection_id")
+	if connectionID == "" {
+		http.Error(w, "connection_id is required", http.StatusBadRequest)
+		return
+	}
+
 	client, err := sse.NewClient(clientID, w, r.Context())
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to create client")
@@ -105,8 +111,7 @@ func (h *Handler) SSEHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	connectionID, err := h.eventSender.CliManager.AddClient(clientID, fmt.Sprintf("%d", h.nodeID), client)
-	if err != nil {
+	if err := h.eventSender.CliManager.AddClient(clientID, connectionID, fmt.Sprintf("%d", h.nodeID), client); err != nil {
 		h.handleClientConnectRedirect(w, r, clientID)
 		return
 	}

@@ -29,21 +29,23 @@ func (es *EventSender) SendEventToClient(clientID string, notification *models.S
 		return fmt.Errorf("no clients connected with client_id %s", clientID)
 	}
 
-	sendErrors := make([]error, 0)
-	for connectionID, client := range ownerships.connections {
-		err := client.SendEvent(uuid.New().String(), "alert", notification.Message)
-		if err != nil {
-			log.Error().Err(err).Str("client_id", clientID).Str("connection_id", connectionID).Msg("Failed to send event to client")
-			sendErrors = append(sendErrors, err)
-		}
+	client := ownerships.connections[notification.ConnectionID]
+	if client == nil {
+		return fmt.Errorf("no client connected with connection_id %s", notification.ConnectionID)
 	}
 
-	if len(sendErrors) > 0 {
-		log.Error().Str("client_id", notification.ClientID).Msg("Failed to send events to some clients")
-		return fmt.Errorf("failed to send events to some clients")
+	if err := client.SendEvent(uuid.NewString(), string(models.SSE), notification.Message); err != nil {
+		log.Error().Err(err).
+			Str("client_id", clientID).
+			Str("connection_id", notification.ConnectionID).
+			Msg("Failed to send event to client")
+		return err
 	}
 
-	log.Info().Str("client_id", notification.ClientID).Msg("Event sent to client successfully")
+	log.Info().
+		Str("client_id", notification.ClientID).
+		Str("connection_id", notification.ConnectionID).
+		Msg("Event sent to client successfully")
 	return nil
 }
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
 	"github.com/prism-o11y/prism-server/alert-noti-service/internal/notify/sse/lock"
@@ -31,26 +30,26 @@ func newClientManager(distLock *lock.DistributedLock) *clientManager {
 	}
 }
 
-func (cm *clientManager) AddClient(clientID, nodeID string, client *Client) (string, error) {
+func (cm *clientManager) AddClient(clientID, connectionID, nodeID string, client *Client) error {
 	cm.addMu.Lock()
 	defer cm.addMu.Unlock()
 
 	lockNodeID, err := cm.distLock.GetNodeForClient(clientID)
 	if err != nil {
 		if err != lock.ErrNoLockFound {
-			return "", err
+			return err
 		}
 		if err := cm.distLock.Acquire(clientID, nodeID); err != nil {
 			if err == lock.ErrLockAlreadyHeld {
-				return "", err
+				return err
 			}
-			return "", err
+			return err
 		}
 		lockNodeID = nodeID
 	}
 
 	if lockNodeID != nodeID {
-		return "", fmt.Errorf("client %s is already connected to another node", clientID)
+		return fmt.Errorf("client %s is already connected to another node", clientID)
 	}
 
 	cm.mu.Lock()
@@ -68,14 +67,13 @@ func (cm *clientManager) AddClient(clientID, nodeID string, client *Client) (str
 		go client.StartRenewLock(lockInterval, lockCtx, cm.distLock)
 	}
 
-	connectionID := uuid.New().String()
 	client.ConnectionID = connectionID
 	cm.ownerships[clientID].connections[connectionID] = client
 
 	go client.StartHeartbeat(lockInterval * 2)
 	go client.WaitForDisconnection(cm, clientID, connectionID)
 
-	return connectionID, nil
+	return nil
 }
 
 func (cm *clientManager) RemoveClient(clientID, connectionID string) error {

@@ -1,6 +1,8 @@
 go 1.23.0
 
 use (
+    ./log-read-service
+    ./log-write-service
 	./alert-noti-service
 	./shared
 )

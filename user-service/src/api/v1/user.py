@@ -13,8 +13,30 @@ from ...svc.user.models import User
 _router = APIRouter(prefix="/user")
 
 @_router.get("/get-user-by-id", name="user:get-user-by-id")
-async def get_user_by_id(payload:dict[str,str], user_svc:UserService = Depends(get_user_service)):
-    user_id = payload.get("user_id")
+async def get_user_by_id(request:Request,user_svc:UserService = Depends(get_user_service), jwt_manager:JWTManager = Depends(get_jwt_manager)):
+    jwt = request.cookies.get("jwt")
+    if not jwt:
+        JSONResponse(
+            status_code=HTTP_401_UNAUTHORIZED,
+            content = {
+                "status":"Failed",
+                "message": "User not authenticated",
+                "data": None
+            }
+        )
+    
+    is_valid, token = await jwt_manager.validate_jwt(jwt)
+    if not is_valid:
+        return JSONResponse(
+            status_code=HTTP_401_UNAUTHORIZED,
+            content = {
+                "status":"Failed",
+                "message": "User not authenticated",
+                "data": None
+            }
+        )
+    
+    user_id = token.get("user_id")
     try:
         user = await user_svc.get_user_by_id(user_id)
         if not user:
@@ -201,3 +223,60 @@ async def delete_user(request:Request,
             "data": None
         }
     )
+
+@_router.get("/get-user-by-user-id", name="user:get-user-by-user-id")
+async def get_user_by_user_id(request:Request, jwt_manager:JWTManager = Depends(get_jwt_manager), user_svc:UserService = Depends(get_user_service)):
+    jwt = request.cookies.get("jwt")
+    if not jwt:
+        JSONResponse(
+            status_code=HTTP_401_UNAUTHORIZED,
+            content = {
+                "status":"Failed",
+                "message": "User not authenticated",
+                "data": None
+            }
+        )
+    
+    is_valid, token = await jwt_manager.validate_jwt(jwt)
+    if not is_valid:
+        return JSONResponse(
+            status_code=HTTP_401_UNAUTHORIZED,
+            content = {
+                "status":"Failed",
+                "message": "User not authenticated",
+                "data": None
+            }
+        )
+    
+    user_id = token.get("user_id")
+    try:
+        user = await user_svc.get_user_by_id(user_id)
+        if not user:
+            return JSONResponse(
+                status_code=HTTP_404_NOT_FOUND,
+                content = {
+                    "status":"Failed",
+                    "message": "User not found",
+                    "data": None
+                }
+            )
+
+        return JSONResponse(
+            status_code=HTTP_200_OK,
+            content = {
+                "status":"Success",
+                "message": "User found",
+                "data": json.loads(user)
+            }
+        )
+    
+    except Exception as e:
+        logging.exception({"event": "Get-User-By-Id", "status": "Failed", "error": str(e)})
+        return JSONResponse(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            content = {
+                "status":"Failed",
+                "message": "Internal server error",
+                "data": None
+            }
+        )

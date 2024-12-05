@@ -14,7 +14,7 @@ class SSEService:
             
             sse_notification = SSENotification(
                 client_id = client_id,
-                connection_id = connection_id,
+                connection_id = client_id,
                 severity = severity,
                 message = message,
                 datetime = dt.datetime.now(dt.timezone.utc),

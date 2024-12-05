@@ -113,6 +113,7 @@ class OrgRepository:
             )
 
             return True, "Users removed from org successfully"
+        
     
     async def update_org(self):
         async with self.connection.transaction():

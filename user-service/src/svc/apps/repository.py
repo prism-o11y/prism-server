@@ -14,16 +14,18 @@ class AppRepository:
         async with self.connection.transaction():
 
             query = '''
-                    UPDATE applications
-                    SET app_name = $1, updated_at = $2
-                    WHERE app_id = $3
+                    INSERT INTO applications(app_id, org_id, app_name, app_url, created_at, updated_at)
+                    VALUES($1, $2, $3, $4, $5, $6)
                     '''
             
             await self.connection.execute(
                 query,
-                app.app_name,
-                app.updated_at,
                 app.app_id,
+                app.org_id,
+                app.app_name,
+                app.app_url,
+                app.created_at,
+                app.updated_at,
             )
             
         return True, "App created successfully"
@@ -64,6 +66,22 @@ class AppRepository:
             )
 
         return True, "App deleted successfully"
+    
+    async def delete_app_by_org_id(self, org_id) -> tuple[bool, str]:
+
+        async with self.connection.transaction():
+                
+            query = '''
+                    DELETE FROM applications
+                    WHERE org_id = $1
+                    '''
+            
+            await self.connection.execute(
+                query,
+                org_id,
+            )
+
+        return True, "Apps deleted successfully"
 
     
     async def get_app_by_id(self, app_id):
@@ -140,6 +158,22 @@ class AppRepository:
             result = await self.connection.fetchrow(
                 query,
                 app_name,
+                app_url
+            )
+
+            return result
+        
+    async def get_app_by_url(self, app_url:str):
+
+        async with self.connection.transaction():
+            query = '''
+                    SELECT app_id, org_id, app_name, app_url, created_at, updated_at 
+                    FROM applications
+                    WHERE app_url = $1
+                    '''
+            
+            result = await self.connection.fetchrow(
+                query,
                 app_url
             )
 

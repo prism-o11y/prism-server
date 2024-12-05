@@ -59,7 +59,7 @@ class AppService:
                 await self.sse_service.process_sse_message(
                     message = "User not found",
                     connection_id = str(user_id),
-                    client_id = SSEClients.TEST_CLIENT,
+                    client_id = str(user_id),
                     severity = AlertSeverity.Critical
                 )
                 return
@@ -71,21 +71,21 @@ class AppService:
                 await self.sse_service.process_sse_message(
                     message = "User not associated with any org",
                     connection_id = str(user_id),
-                    client_id = SSEClients.TEST_CLIENT,
+                    client_id = str(user_id),
                     severity = AlertSeverity.Critical
                 )
                 return
 
             app_repo = AppRepository(connection)
 
-            app = await app_repo.get_app_by_name_and_url(name, url)
+            app = await app_repo.get_app_by_url(url)
 
             app_obj = Application(**dict(app)) if app else None
             if app_obj:
                 await self.sse_service.process_sse_message(
                     message = "App already exists",
                     connection_id = str(app_obj.app_id),
-                    client_id = SSEClients.TEST_CLIENT,
+                    client_id = str(user_id),
                     severity = AlertSeverity.Warning
                 )
                 return
@@ -98,7 +98,7 @@ class AppService:
                 await self.sse_service.process_sse_message(
                     message = message,
                     connection_id = str(app.app_id),
-                    client_id = SSEClients.TEST_CLIENT,
+                    client_id = str(user_id),
                     severity = AlertSeverity.Info
                 )
 
@@ -114,7 +114,7 @@ class AppService:
                 await self.sse_service.process_sse_message(
                     message = "App not found",
                     connection_id = str(user_id),
-                    client_id = SSEClients.TEST_CLIENT,
+                    client_id = str(user_id),
                     severity = AlertSeverity.Warning
                 )
                 return
@@ -128,7 +128,7 @@ class AppService:
                 await self.sse_service.process_sse_message(
                     message = message,
                     connection_id = str(app.app_id),
-                    client_id = SSEClients.TEST_CLIENT,
+                    client_id = str(user_id),
                     severity = AlertSeverity.Info
                 )
 
@@ -145,7 +145,7 @@ class AppService:
                 await self.sse_service.process_sse_message(
                     message = "App not found",
                     connection_id = str(user_id),
-                    client_id = SSEClients.TEST_CLIENT,
+                    client_id = str(user_id),
                     severity = AlertSeverity.Warning
                 )
                 return
@@ -158,7 +158,7 @@ class AppService:
                 await self.sse_service.process_sse_message(
                     message = message,
                     connection_id = str(app.app_id),
-                    client_id = SSEClients.TEST_CLIENT,
+                    client_id = str(user_id),
                     severity = AlertSeverity.Info
                 )
 

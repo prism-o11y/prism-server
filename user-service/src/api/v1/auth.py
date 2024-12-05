@@ -44,7 +44,7 @@ async def callback(request: Request,
         
         user:User = user_svc.generate_user(email)
         jwt = await user_svc.create_user(user, sub)
-
+        
         response = RedirectResponse(url="http://localhost:3000", status_code=HTTP_303_SEE_OTHER)
         response.set_cookie(
             key="jwt",

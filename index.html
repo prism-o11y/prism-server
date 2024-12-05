@@ -28,7 +28,7 @@
     <script>
         // List of available server nodes
         const nodes = [
-            'http://localhost:80/api/alert-noti-service',
+            'http://localhost/api/alert-noti-service',
         ];
 
         let currentNodeIndex = 0; // Index of the current node
@@ -64,7 +64,7 @@
             };
 
             // Custom event handler for "alert" events
-            eventSource.addEventListener('alert', function(event) {
+            eventSource.addEventListener('SSE', function(event) {
                 logMessage(`Alert received: ${event.data}`, 'alert');
                 console.log('Alert received:', event.data);
             });

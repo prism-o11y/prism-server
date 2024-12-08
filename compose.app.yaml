@@ -89,3 +89,17 @@ services:
     depends_on:
       - cache
       - kafka
+
+  log-write-service:
+    build: 
+      context: .
+      dockerfile: log-write-service/Dockerfile
+    environment:
+      - SERVER_NODE=0
+    env_file:
+      - assets/env/.env
+    ports:
+      - "8100:8100"
+    networks:
+      - elastic
+      - default

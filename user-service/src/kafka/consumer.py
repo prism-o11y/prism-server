@@ -114,6 +114,12 @@ class KafkaConsumerService:
                     case model.Action.INSERT_APP:
                         await self.app_service.create_app(name = data.data.get("app_name"), url = data.data.get("app_url"), token = data.data.get("token"))
 
+                    case model.Action.UPDATE_APP:
+                        await self.app_service.update_app(app_name = data.data.get("app_name"), app_url = data.data.get("app_url"), token = data.data.get("token"))
+
+                    case model.Action.DELETE_APP:
+                        await self.app_service.delete_app(app_name = data.data.get("app_name"), app_url = data.data.get("app_url"), token = data.data.get("token"))
+
                     case _:
                         logging.warning({"event": "Process-message", "action": data.action, "status": "Unhandled"})
             else:

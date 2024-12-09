@@ -13,7 +13,6 @@ import (
 
 	"github.com/prism-o11y/prism-server/log-write-service/internal/depends"
 	"github.com/prism-o11y/prism-server/shared/data/kafka"
-	"github.com/prism-o11y/prism-server/shared/server"
 )
 
 type Server struct {

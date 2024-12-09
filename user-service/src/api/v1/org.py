@@ -199,6 +199,57 @@ async def delete_org(request:Request,
 @_router.post("/update-org", name="org:update-org")
 async def update_org():
     pass
+
+@_router.get("/get-org-by-user-id", name="org:get-org-by-user-id")
+async def get_org_by_user_id(request:Request,
+                            jwt_manager: JWTManager = Depends(get_jwt_manager),
+                            org_service: OrgService = Depends(get_org_service)
+    ):
+
+    jwt = request.cookies.get("jwt")
+    if not jwt:
+        return JSONResponse(
+            status_code=HTTP_401_UNAUTHORIZED, 
+            content = {
+                "status":"Failed",
+                "message": "User not authenticated",
+                "data": None
+            }
+        )
+    
+    is_valid,token = await jwt_manager.validate_jwt(jwt)
+    if not is_valid:
+        return JSONResponse(
+            status_code=HTTP_401_UNAUTHORIZED, 
+            content = {
+                "status":"Failed",
+                "message": "User not authenticated",
+                "data": None
+            }
+        )
+    
+    user_id = token.get("user_id")
+
+    org = await org_service.get_org_by_user_id(user_id)
+
+    if not org:
+        return JSONResponse(
+            status_code = HTTP_404_NOT_FOUND,
+            content = {
+                "status":"Failed",
+                "message":"Organization not found",
+                "data": None
+            }
+        )
+    
+    return JSONResponse(
+        status_code = HTTP_200_OK,
+        content = {
+            "status":"Success",
+            "message":"Organization found",
+            "data": json.loads(org)
+        }
+    )
     
 
 @_router.get("/get-org-by-id", name="org:get-org-by-id")

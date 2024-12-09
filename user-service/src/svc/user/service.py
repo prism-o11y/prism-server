@@ -8,57 +8,34 @@ from .models import User, STATUS
 import datetime as dt, uuid, logging
 from ...config.base_config import get_base_config, BaseConfig
 from tenacity import retry, stop_after_attempt, wait_exponential
+from ..sse.models import SSEClients, AlertSeverity
+from ..sse.service import SSEService, get_sse_service
 
 class UserService:
 
-    def __init__(self, postgres_manager: PostgresManager, kafka_producer: KafkaProducerService, jwt_manager: JWTManager) -> None:
+    def __init__(self, postgres_manager: PostgresManager, kafka_producer: KafkaProducerService, jwt_manager: JWTManager, sse_service:SSEService) -> None:
         self.kafka_producer = kafka_producer
         self.postgres_manager = postgres_manager
         self.jwt_manager = jwt_manager
+        self.sse_service = sse_service
         self.base_config: BaseConfig = get_base_config()
 
     async def create_user(self, user:User, auth0_sub:str):
         result = await self.insert_user(user)
         jwt = await self.jwt_manager.encode(result, auth0_sub)
         return jwt
+    
+    async def produce_user_request(self, data:dict, user_id:uuid.UUID, action:str, email:str = None):
 
-    async def produce_new_user(self, user: User):
-
-        data = model.UserData(
-            action = model.Action.INSERT_USER, 
-            user_data = user.model_dump(),
+        data = model.Data(
+            action = action,
+            data = data
         ).model_dump_json().encode('utf-8')
 
         message = model.EventData(
             source = model.SourceType.USER_SERVICE,
             data = data,
-            email = user.email,
-            user_id = user.user_id
-        )
-
-        try:
-            await self.kafka_producer.enqueue_message(
-                topic = self.base_config.KAFKA.TOPICS.get("user"),
-                key = str(user.user_id),
-                value = message.model_dump_json().encode('utf-8')
-            )     
-
-            logging.info({"event": "Produce-Message", "user": user.email, "status": "Produced"})
-
-        except Exception as e:
-            logging.error({"event": "Produce-Message", "user": user.email, "status": "Failed", "error": str(e)})
-
-    async def produce_delete_user(self, user_id: uuid.UUID):
-
-        data = model.UserData(
-            action = model.Action.DELETE_USER,
-            user_data = {"user_id": user_id}
-        ).model_dump_json().encode('utf-8')
-
-        message = model.EventData(
-            source = model.SourceType.USER_SERVICE,
-            data = data,
-            email = None,
+            email = email,
             user_id = user_id
         )
 
@@ -87,15 +64,6 @@ class UserService:
 
         return user
 
-
-
-    @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
-    async def insert_user(self, user: User) -> str:
-        async with self.postgres_manager.get_connection() as connection:
-            user_repo = UserRepository(connection)
-            result = await user_repo.create_user(user)
-            return result
-
     async def get_user_by_id(self, user_id:uuid.UUID):
 
         async with self.postgres_manager.get_connection() as connection:
@@ -120,7 +88,8 @@ class UserService:
             else:
                 user = User(**dict(result))
                 return user.model_dump_json()
-            
+
+
     async def update_user(self, user:User) -> str:
 
         async with self.postgres_manager.get_connection() as connection:
@@ -136,19 +105,37 @@ class UserService:
 
                 return str(result)
             
+    async def insert_user(self, user: User) -> str:
+        async with self.postgres_manager.get_connection() as connection:
+            user_repo = UserRepository(connection)
+            result = await user_repo.create_user(user)
+            return result
+            
+    @retry(wait=wait_exponential(multiplier=1, min=1, max=10), stop=stop_after_attempt(3))
     async def delete_user(self, user_id:uuid.UUID) -> str:
 
         async with self.postgres_manager.get_connection() as connection:
 
             user_repo = UserRepository(connection)
-
-            result = await user_repo.delete_user(user_id)
-
-            if not result:
-                return None
+            user = await user_repo.get_user_by_id(user_id)
+            if not user:
+                await self.sse_service.process_sse_message(
+                    message = "User not found",
+                    connection_id = str(user_id),
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity=AlertSeverity.Warning
+                )
+                return
             
-            else:
-                return str(result)
+            deleted,message = await user_repo.delete_user(user_id)
+            if deleted:
+                await self.sse_service.process_sse_message(
+                    message = message,
+                    connection_id = str(user_id),
+                    client_id = SSEClients.TEST_CLIENT,
+                    severity=AlertSeverity.Info
+                )
+                return
             
     async def get_all_users(self) -> list[User]:
 
@@ -169,7 +156,8 @@ class UserService:
 async def get_user_service(
         postgres_manager:PostgresManager = Depends(get_postgres_manager),
         kafka_producer: KafkaProducerService = Depends(get_kafka_producer_service),
-        jwt_manager: JWTManager = Depends(get_jwt_manager)
+        jwt_manager: JWTManager = Depends(get_jwt_manager),
+        sse_service: SSEService = Depends(get_sse_service)
     ) -> UserService:
     
-    return UserService(postgres_manager,kafka_producer,jwt_manager)
+    return UserService(postgres_manager,kafka_producer,jwt_manager, sse_service)

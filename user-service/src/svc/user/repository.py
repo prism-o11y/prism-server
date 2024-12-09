@@ -106,7 +106,7 @@ class UserRepository:
             rows = await self.connection.fetch(select_query)
             return rows
 
-    async def delete_user(self, user_id):
+    async def delete_user(self, user_id) -> tuple[bool,str]:
 
         async with self.connection.transaction():
 
@@ -117,14 +117,16 @@ class UserRepository:
                             WHERE user_id = $2 AND status_id = $3
                             RETURNING user_id;
                            '''
-            user_id = await self.connection.fetchval(
+            await self.connection.execute(
                 select_query,
                 STATUS.REMOVED.value,
                 user_id,
                 STATUS.ACTIVE.value
             )
 
-            return user_id
+            
+            return True, "User deleted successfully"
+
         
     async def get_user_org(self, user_id: str) -> Optional[str]:
 
@@ -142,7 +144,7 @@ class UserRepository:
 
             return org_id
         
-    async def add_user_to_org(self, user_id:str, org_id:str):
+    async def add_user_to_org(self, user_id:str, org_id:str) -> tuple[bool,str]:
 
         async with self.connection.transaction(): 
             user_org_insert_query = '''
@@ -151,19 +153,16 @@ class UserRepository:
                                     WHERE user_id = $2 and status_id = $3;
                                     '''
 
-            result = await self.connection.execute(
+            await self.connection.execute(
                 user_org_insert_query,
                 org_id,
                 user_id,
                 STATUS.ACTIVE.value
             )
 
-            row_updated = int(result.split()[-1])
+            return True, "User added to org successfully"
 
-            if row_updated == 0:
-                logging.error({"event": "Add-User-To-Org", "user_id": user_id, "org_id": org_id, "status": "Failed", "error": "User not found"})
-
-    async def remove_user_from_org(self, user_id:str):
+    async def remove_user_from_org(self, user_id:str) -> tuple[bool,str]:
 
         now = dt.datetime.now()
         async with self.connection.transaction():
@@ -175,16 +174,14 @@ class UserRepository:
                                     WHERE user_id = $2 and status_id = $3;
                                     '''
             
-            result = await self.connection.execute(
+            await self.connection.execute(
                 user_org_remove_query,
                 now,
                 user_id,
                 STATUS.ACTIVE.value
             )
-
-            row_updated = int(result.split()[-1])
-
-            return row_updated
+            
+            return True, "User removed from org successfully"
                 
             
 

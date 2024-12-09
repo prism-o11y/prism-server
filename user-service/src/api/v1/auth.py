@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, Depends, HTTPException, Response
-from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_201_CREATED, HTTP_303_SEE_OTHER
+from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_200_OK, HTTP_303_SEE_OTHER
 from fastapi.exceptions import HTTPException
 from ...svc.auth.service import get_auth0_manager
 from ...jwt.service import get_jwt_manager, JWTManager
@@ -15,7 +15,7 @@ _router = APIRouter(prefix="/auth")
 
 @_router.get("/login",name="auth:login")
 async def login(request: Request, auth0Manager = Depends(get_auth0_manager)):
-    callback_url = f"{request.url.scheme}://{request.url.hostname}/user-service" + request.url_for("auth:callback").path
+    callback_url = f"{request.url.scheme}://{request.url.hostname}:81/api/user-service" + request.url_for("auth:callback").path
     return await auth0Manager.oauth.auth0.authorize_redirect(
         request,callback_url
     )
@@ -44,8 +44,8 @@ async def callback(request: Request,
         
         user:User = user_svc.generate_user(email)
         jwt = await user_svc.create_user(user, sub)
-
-        response = JSONResponse(status_code=HTTP_201_CREATED, content={"detail":"User login successful"})
+        
+        response = RedirectResponse(url="http://localhost:3000", status_code=HTTP_303_SEE_OTHER)
         response.set_cookie(
             key="jwt",
             value=jwt,
@@ -53,8 +53,6 @@ async def callback(request: Request,
         )
 
         return response
-        # await user_svc.produce_new_user(user)
-
 
     except HTTPException as e:
         logging.error(f"Auth error: {e.detail}")
@@ -67,8 +65,11 @@ async def callback(request: Request,
 @_router.get("/logout", name="auth:logout")
 async def logout(request: Request, auth0_manager: Auth0Manager = Depends(get_auth0_manager)):
     try:
-        logout_url = auth0_manager.get_logout_url(request.url_for("auth:login"))
-        return RedirectResponse(status_code = HTTP_500_INTERNAL_SERVER_ERROR, url = logout_url)
+        request.cookies.clear()
+        logout_url = auth0_manager.get_logout_url("http://localhost:81/api/user-service/auth/login")
+        response = RedirectResponse(status_code =HTTP_303_SEE_OTHER, url = logout_url)
+        response.delete_cookie("jwt")
+        return response
     
     except Exception as e:
         logging.exception("Unexpected error during logout")

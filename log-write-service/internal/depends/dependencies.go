@@ -27,7 +27,6 @@ func New() (*Dependencies, error) {
 
 	consManager := kafka.NewConsumerManager()
 	producerManager := kafka.NewProducerManager()
-
 	client, err := elastic.NewElasticClient(cfg.Databases.ESAddress, cfg.Databases.ESUsername, cfg.Databases.ESPassword)
 	if err != nil {
 		return nil, err
@@ -36,7 +35,6 @@ func New() (*Dependencies, error) {
 	logRepo := collector.NewRepository(client)
 	svc := collector.NewService(logRepo)
 	logHandler := collector.NewHandler(svc, producerManager, consManager, cfg.Server.NodeID)
-
 	return &Dependencies{
 		Config:          cfg,
 		ConsManager:     consManager,
@@ -53,6 +51,5 @@ func (d *Dependencies) Close(ctx context.Context) error {
 	if err := d.ESClient.Close(); err != nil {
 		log.Error().Err(err).Msg("Failed to close ES client")
 	}
-
 	return nil
 }

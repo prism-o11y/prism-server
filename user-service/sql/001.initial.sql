@@ -43,7 +43,7 @@ CREATE TABLE applications (
   app_id UUID PRIMARY KEY,          -- Manually generated UUID
   org_id UUID NOT NULL,             -- Foreign key to organizations table
   app_name VARCHAR(255) NOT NULL,
-  app_url VARCHAR(255) NOT NULL,
+  app_url VARCHAR(255) NOT NULL UNIQUE,
   created_at TIMESTAMPTZ NOT NULL,  -- Manually generated, using UTC timestamps
   updated_at TIMESTAMPTZ NOT NULL,  -- Manually generated, using UTC timestamps
 

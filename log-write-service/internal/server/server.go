@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/prism-o11y/prism-server/log-write-service/internal/depends"
-	"github.com/prism-o11y/prism-server/shared/server"
+	"github.com/prism-o11y/prism-server/shared/data/kafka"
 )
 
 type Server struct {
@@ -62,9 +62,16 @@ func buildAddress(address string, nodeID int, nodeCount int) (string, error) {
 
 func (s *Server) routes() {
 	s.router.Get("/health", server.HealthCheckHandler)
+	s.router.Post("/log", s.deps.LogHandler.HandleLogWrite)
 }
 
 func (s *Server) Start(ctx context.Context) {
+	brokers := []string{s.deps.Config.Databases.KafkaAddress}
+	topics := []string{kafka.LogWriteTopic}
+	groupIDs := []string{kafka.LogWriteGroupID}
+
+	go s.deps.LogHandler.StartConsumers(ctx, brokers, topics, groupIDs, 10*time.Second)
+
 	log.Info().Str("address", s.server.Addr).Msgf("Starting HTTP server.")
 	if err := s.server.ListenAndServe(); err != http.ErrServerClosed {
 		log.Fatal().Err(err).Msg("HTTP server crashed")

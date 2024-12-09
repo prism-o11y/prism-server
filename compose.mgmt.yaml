@@ -3,7 +3,8 @@ services:
     image: confluentinc/cp-kafka:latest
     entrypoint: >
       sh -c "
-      kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic log-topic
+      kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic log-write-topic
+      && kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic log-read-topic
       && kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic notify-topic
       && kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 1 --topic user-topic
       && kafka-topics --create --bootstrap-server kafka:9092 --replication-factor 1 --partitions 5 --topic transfer-topic

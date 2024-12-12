@@ -52,7 +52,6 @@ The PRISM server employs an event-driven microservices architecture, consisting 
 
 ## Prerequisites
 
-- [Go 1.16 or higher](https://go.dev/doc/install)
 - Docker Requirements:
     > installation link [docs.docker.com/desktop/](https://docs.docker.com/desktop/)
     1. Docker Engine
